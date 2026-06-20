@@ -10,6 +10,7 @@ export interface TestEnv {
   DB: D1Database;
   API_BASE_URL: string;
   WITNESSKEY_VERIFY_BASE_URL: string;
+  ABRACADOO_ACCEPT_WITNESS_BASE_URL: string;
   ALLOWED_ORIGINS: string;
   RECEIPT_SIGNING_SECRET?: string;
   database: MockD1Database;
@@ -237,6 +238,7 @@ export function makeEnv(): TestEnv {
     DB: database as unknown as D1Database,
     API_BASE_URL: API_BASE,
     WITNESSKEY_VERIFY_BASE_URL: "https://witnesskey.online/verify",
+    ABRACADOO_ACCEPT_WITNESS_BASE_URL: "https://app.abracadoo.app/accept-witness/",
     ALLOWED_ORIGINS: "https://witnesskey.online,https://abracadoo.app",
     RECEIPT_SIGNING_SECRET: "test-secret",
     database

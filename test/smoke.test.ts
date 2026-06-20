@@ -38,7 +38,9 @@ describe("worker api skeleton", () => {
     expect(response.status).toBe(201);
     expect(body.offer_id).toMatch(/^wo_/);
     expect(body.status).toBe("offered");
-    expect(body.accept_url).toBe(`${API_BASE}/authorization-offers/${body.offer_id}/accept`);
+    expect(body.accept_url).toContain(`offer_id=${body.offer_id}`);
+    expect(body.accept_url).toMatch(/^https:\/\/app\.abracadoo\.app\/accept-witness\/\?/);
+    expect(body.accept_url).not.toContain("/authorization-offers/");
     expect(body.expires_at).toContain("T");
   });
 

@@ -8,6 +8,7 @@ import { isHttpsOrLocalUrl, isSha256Hash, isStringArray } from "./utils/validati
 
 const CANONICAL_API_BASE_URL = "https://api.looptloop.online/v0";
 const DEFAULT_VERIFY_BASE_URL = "https://witnesskey.online/verify";
+const DEFAULT_ABRACADOO_ACCEPT_WITNESS_BASE_URL = "https://app.abracadoo.app/accept-witness/";
 const EVENT_TYPE = "private_authorization_witnessed";
 const OFFER_SCHEMA = "WITNESSKEY_AUTHORIZATION_OFFER_0_1";
 const ACCEPTANCE_SCHEMA = "WITNESSKEY_AUTHORIZATION_ACCEPTANCE_0_1";
@@ -109,7 +110,6 @@ export default {
 
     const url = new URL(request.url);
     const path = url.pathname === "/" ? "/" : url.pathname.replace(/\/$/, "");
-    const apiBaseUrl = env.API_BASE_URL || CANONICAL_API_BASE_URL;
 
     let response: Response;
 
@@ -122,7 +122,7 @@ export default {
           invariant: "Private payload stays private. This API witnesses hashes and consent envelopes, not private payloads."
         });
       } else if (request.method === "POST" && path === "/v0/authorization-offers") {
-        response = await handleCreateOffer(request, env, apiBaseUrl);
+        response = await handleCreateOffer(request, env);
       } else if (request.method === "GET" && /^\/v0\/authorization-offers\/[^/]+$/.test(path)) {
         const offerId = path.split("/").pop()!;
         response = await handleGetOffer(env, offerId);
@@ -149,7 +149,7 @@ export default {
   }
 };
 
-async function handleCreateOffer(request: Request, env: Env, apiBaseUrl: string): Promise<Response> {
+async function handleCreateOffer(request: Request, env: Env): Promise<Response> {
   const parsedBody = await parseJsonBody(request);
   if (parsedBody instanceof Response) return parsedBody;
 
@@ -211,11 +211,15 @@ async function handleCreateOffer(request: Request, env: Env, apiBaseUrl: string)
     )
     .run();
 
+  const acceptWitnessBaseUrl = env.ABRACADOO_ACCEPT_WITNESS_BASE_URL || DEFAULT_ABRACADOO_ACCEPT_WITNESS_BASE_URL;
+  const acceptUrl = new URL(acceptWitnessBaseUrl);
+  acceptUrl.searchParams.set("offer_id", offer.id);
+
   return json(
     {
       offer_id: offer.id,
       status: offer.status,
-      accept_url: `${apiBaseUrl}/authorization-offers/${offer.id}/accept`,
+      accept_url: acceptUrl.toString(),
       expires_at: offer.expires_at
     },
     { status: 201 }
