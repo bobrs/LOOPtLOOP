@@ -239,7 +239,7 @@ export function makeEnv(): TestEnv {
     API_BASE_URL: API_BASE,
     WITNESSKEY_VERIFY_BASE_URL: "https://witnesskey.online/verify",
     ABRACADOO_ACCEPT_WITNESS_BASE_URL: "https://app.abracadoo.app/accept-witness/",
-    ALLOWED_ORIGINS: "https://witnesskey.online,https://abracadoo.app",
+    ALLOWED_ORIGINS: "https://app.abracadoo.app,https://abracadoo.app,https://witnesskey.online,http://localhost:8787,http://localhost:5173",
     RECEIPT_SIGNING_SECRET: "test-secret",
     database
   };
