@@ -199,6 +199,29 @@ v0.1 behavior:
 
 v0.1 development mode may use HMAC-SHA256 with `RECEIPT_SIGNING_SECRET`.
 
+v0.1 signature coverage should use a deterministic canonical material object over these fields:
+
+- `schema`
+- `event_id`
+- `offer_id`
+- `loop_id`
+- `event_type`
+- `issuer_name`
+- `issuer_origin`
+- `payload_hash`
+- `participant_app`
+- `participant_ref`
+- `participant_role`
+- `declared_roles`
+- `consent_prompt_hash`
+- `storage_policy`
+- `claims_policy`
+- `created_at`
+- `expires_at`
+- `verification_url`
+
+`receipt_signature` must not be included in the signed material.
+
 Future production direction:
 
 - Ed25519 signing key
