@@ -184,6 +184,56 @@ npm run dev:local
 8. Repeat with `Refresh external status` and confirm:
    - `pending`, `accepted`, `rejected`, `expired`, and API/network error states render visible status copy
 
+## Verification page manual validation
+
+There is no automated browser harness in this repo for the human-facing verification page. Validate it manually:
+
+1. Start a static file server from the repo root:
+
+```bash
+python3 -m http.server 8000
+```
+
+2. Open the static page with a known event ID:
+
+```txt
+http://127.0.0.1:8000/public/verify/index.html?event_id=we_TEST_VALID_EVENT_ID
+```
+
+3. Confirm the page calls:
+
+```txt
+https://api.looptloop.online/v0/authorization-events/we_TEST_VALID_EVENT_ID/verify
+```
+
+4. For a known valid event, confirm the page renders:
+   - `verification status`
+   - `receipt_signature_valid`
+   - `event_id`
+   - `payload_hash`
+   - issuer name/origin if returned
+   - participant app/ref if returned
+   - declared roles if returned
+   - `created_at`
+   - `expires_at`
+   - claims
+   - non-claims
+   - storage policy
+
+5. Open the page with a missing or invalid event ID and confirm it shows:
+   - `Missing event_id` when none is present
+   - `Event not found` for a 404 verifier response
+   - `Verification failed` when the API returns a non-verified result
+   - `Network/API error` when the verifier cannot be reached
+
+6. If the page is deployed behind a route rewrite, also confirm path extraction works:
+
+```txt
+/verify/we_TEST_VALID_EVENT_ID
+```
+
+7. Confirm the page never asks for, uploads, or stores private payload content.
+
 ## Receipt signing
 
 v0.1 development signing uses HMAC-SHA256 with `RECEIPT_SIGNING_SECRET`. The implementation is isolated in:
