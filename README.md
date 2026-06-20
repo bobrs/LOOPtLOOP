@@ -149,6 +149,41 @@ curl -sS http://127.0.0.1:8787/v0/authorization-events/<event_id>
 curl -sS http://127.0.0.1:8787/v0/authorization-events/<event_id>/verify
 ```
 
+## WitnessMark manual validation
+
+There is no automated browser harness in this repo for the WitnessMark page. Validate the external integration manually:
+
+1. Start the Worker API:
+
+```bash
+npm install
+npm run d1:migrate:local
+npm run dev:local
+```
+
+2. Open [public/witnessmark/index.html](</Users/bob/Library/CloudStorage/GoogleDrive-bob@simpsoncentral.com/Shared drives/DeepTrust Labs/Github/LOOPtLOOP/public/witnessmark/index.html>) in a browser.
+
+3. Select `External WitnessKey authorization loop`.
+
+4. Enter a private input and confirm the consent checkboxes.
+
+5. Create the mark and confirm:
+   - the page shows `Pending Abracadoo acceptance`
+   - the receipt text includes the local `sha256:` fingerprint
+   - the raw private input remains only in the page receipt and is not sent to the API
+   - the acceptance handoff URL is shown
+
+6. Click `Developer accept via API` and confirm:
+   - the page shows `Accepted. Authorization event and receipt are ready.`
+   - the receipt renders returned event and receipt JSON
+   - copy, download, and print still work
+
+7. Repeat with `Developer reject via API` and confirm:
+   - the page shows `Rejected. No authorization event was created.`
+
+8. Repeat with `Refresh external status` and confirm:
+   - `pending`, `accepted`, `rejected`, `expired`, and API/network error states render visible status copy
+
 ## Receipt signing
 
 v0.1 development signing uses HMAC-SHA256 with `RECEIPT_SIGNING_SECRET`. The implementation is isolated in:
