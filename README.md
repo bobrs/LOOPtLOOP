@@ -45,9 +45,10 @@ Do not build accounts, billing, OAuth, Web3, hardware/NFC, healthcare mode, lega
 
 ```bash
 npm install
+npm run d1:migrate:local
 npm run typecheck
 npm test
-npm run dev
+npm run dev:local
 ```
 
 ## Cloudflare resources
@@ -78,3 +79,72 @@ GET  /v0/authorization-events/:event_id/verify
 ```
 
 Use D1 binding `DB`. Use explicit JSON errors. Do not accept or store private payload text. Add tests for route shape and validation.
+
+## Local validation
+
+Apply the D1 migrations locally:
+
+```bash
+npm run d1:migrate:local
+```
+
+Run the Worker locally with the same local D1 binding:
+
+```bash
+npm run dev:local
+```
+
+Create an authorization offer without sending any private payload text:
+
+```bash
+curl -sS http://127.0.0.1:8787/v0/authorization-offers \
+  -H 'content-type: application/json' \
+  -d '{
+    "issuer": {
+      "name": "WitnessKey",
+      "origin": "https://witnesskey.online"
+    },
+    "event_type": "private_authorization_witnessed",
+    "payload_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "payload_label": "Demo authorization payload",
+    "declared_roles": ["user", "ai_agent"],
+    "consent_prompt": "I consent to hash-based authorization witnessing only.",
+    "return_url": "https://abracadoo.app/return"
+  }'
+```
+
+Fetch that offer locally after replacing `<offer_id>` with the value from the create response:
+
+```bash
+curl -sS http://127.0.0.1:8787/v0/authorization-offers/<offer_id>
+```
+
+Accept the offer after replacing `<offer_id>` and `<consent_prompt_hash>`:
+
+```bash
+curl -sS http://127.0.0.1:8787/v0/authorization-offers/<offer_id>/accept \
+  -H 'content-type: application/json' \
+  -d '{
+    "schema": "WITNESSKEY_AUTHORIZATION_ACCEPTANCE_0_1",
+    "accepted_by": {
+      "app": "abracadoo.app",
+      "participant_ref": "local-demo-user",
+      "participant_role": "authorizer"
+    },
+    "consent_action": "accept",
+    "consent_prompt_hash": "<consent_prompt_hash>"
+  }'
+```
+
+Compute the `consent_prompt_hash` locally without sending any private payload:
+
+```bash
+node -e 'crypto.subtle.digest("SHA-256", new TextEncoder().encode("I consent to hash-based authorization witnessing only.")).then((digest) => console.log("sha256:" + Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")))'
+```
+
+Fetch and verify the created authorization event after replacing `<event_id>`:
+
+```bash
+curl -sS http://127.0.0.1:8787/v0/authorization-events/<event_id>
+curl -sS http://127.0.0.1:8787/v0/authorization-events/<event_id>/verify
+```

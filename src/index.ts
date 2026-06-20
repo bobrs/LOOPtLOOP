@@ -243,7 +243,7 @@ async function handleAcceptOffer(request: Request, env: Env, offerId: string): P
     return jsonError("offer_already_accepted", "Accepted offers cannot be accepted twice.", 409);
   }
   if (offer.status !== "offered") {
-    return jsonError("offer_not_acceptible", `Offer cannot be accepted from status "${offer.status}".`, 409);
+    return jsonError("offer_not_acceptable", `Offer cannot be accepted from status "${offer.status}".`, 409);
   }
 
   const parsedBody = await parseJsonBody(request);
