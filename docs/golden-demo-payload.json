@@ -1,0 +1,12 @@
+{
+  "schema": "PRIVATE_AUTHORIZATION_PAYLOAD_DEMO_0_1",
+  "authorizer": "human_local_demo",
+  "actor": "ai_agent_demo",
+  "action": "draft_message",
+  "scope": "one draft message only",
+  "constraints": {
+    "must_request_review_before_send": true,
+    "expires_at": "2026-06-19T23:59:59Z"
+  },
+  "consent_phrase": "I authorize this agent to draft, but not send, one message under these constraints."
+}

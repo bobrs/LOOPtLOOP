@@ -1,0 +1,23 @@
+name = "looptloop-api"
+main = "src/index.ts"
+compatibility_date = "2026-06-19"
+
+# Canonical production route intention:
+# https://api.looptloop.online/v0
+# Configure this route in Cloudflare once the Worker is ready:
+# routes = [
+#   { pattern = "api.looptloop.online/*", custom_domain = true }
+# ]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "looptloop_witness_v01"
+database_id = "REPLACE_WITH_CLOUDFLARE_D1_DATABASE_ID"
+
+[vars]
+API_BASE_URL = "https://api.looptloop.online/v0"
+WITNESSKEY_VERIFY_BASE_URL = "https://witnesskey.online/verify"
+ALLOWED_ORIGINS = "https://witnesskey.online,https://abracadoo.app,http://localhost:8787,http://localhost:5173"
+
+# Set as secret, not plain var:
+# wrangler secret put RECEIPT_SIGNING_SECRET

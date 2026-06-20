@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api.looptloop.online/schemas/authorization-event.schema.json",
+  "title": "WITNESSKEY_AUTHORIZATION_EVENT_0_1",
+  "type": "object",
+  "required": ["schema", "event_id", "offer_id", "loop_id", "event_type", "issuer", "participants", "subject", "declared_roles", "consent", "storage_policy", "claims_policy", "created_at", "receipt_signature", "verification_url"],
+  "properties": {
+    "schema": { "const": "WITNESSKEY_AUTHORIZATION_EVENT_0_1" },
+    "event_id": { "type": "string", "pattern": "^we_" },
+    "offer_id": { "type": "string", "pattern": "^wo_" },
+    "loop_id": { "type": "string", "pattern": "^loop_" },
+    "event_type": { "const": "private_authorization_witnessed" },
+    "issuer": { "type": "object" },
+    "participants": { "type": "array", "items": { "type": "object" }, "minItems": 1 },
+    "subject": { "type": "object" },
+    "declared_roles": { "type": "array", "items": { "type": "string" } },
+    "consent": { "type": "object" },
+    "storage_policy": { "type": "object" },
+    "claims_policy": { "type": "object" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "receipt_signature": { "type": "string" },
+    "verification_url": { "type": "string", "format": "uri" }
+  },
+  "additionalProperties": false
+}

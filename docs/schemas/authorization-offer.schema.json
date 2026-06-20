@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api.looptloop.online/schemas/authorization-offer.schema.json",
+  "title": "WITNESSKEY_AUTHORIZATION_OFFER_0_1",
+  "type": "object",
+  "required": ["schema", "offer_id", "event_type", "issuer", "subject", "declared_roles", "consent_prompt", "storage_policy", "claims_policy", "created_at", "expires_at", "return_url"],
+  "properties": {
+    "schema": { "const": "WITNESSKEY_AUTHORIZATION_OFFER_0_1" },
+    "offer_id": { "type": "string", "pattern": "^wo_" },
+    "event_type": { "const": "private_authorization_witnessed" },
+    "issuer": {
+      "type": "object",
+      "required": ["name", "origin"],
+      "properties": {
+        "name": { "type": "string" },
+        "origin": { "type": "string", "format": "uri" }
+      },
+      "additionalProperties": false
+    },
+    "subject": {
+      "type": "object",
+      "required": ["type", "hash_alg", "payload_hash"],
+      "properties": {
+        "type": { "const": "private_payload_hash" },
+        "hash_alg": { "const": "SHA-256" },
+        "payload_hash": { "type": "string", "pattern": "^sha256:" }
+      },
+      "additionalProperties": false
+    },
+    "payload_label": { "type": "string" },
+    "declared_roles": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "consent_prompt": { "type": "string", "minLength": 1 },
+    "storage_policy": { "type": "object" },
+    "claims_policy": { "type": "object" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "return_url": { "type": "string", "format": "uri" }
+  },
+  "additionalProperties": false
+}

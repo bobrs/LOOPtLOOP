@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api.looptloop.online/schemas/authorization-receipt.schema.json",
+  "title": "WITNESSKEY_AUTHORIZATION_RECEIPT_0_1",
+  "type": "object",
+  "required": ["schema", "receipt_id", "event_id", "offer_id", "event_type", "payload_hash", "issuer_origin", "participant_app", "declared_roles", "created_at", "verification_url", "receipt_signature", "human_summary"],
+  "properties": {
+    "schema": { "const": "WITNESSKEY_AUTHORIZATION_RECEIPT_0_1" },
+    "receipt_id": { "type": "string", "pattern": "^wr_" },
+    "event_id": { "type": "string", "pattern": "^we_" },
+    "offer_id": { "type": "string", "pattern": "^wo_" },
+    "event_type": { "const": "private_authorization_witnessed" },
+    "payload_hash": { "type": "string", "pattern": "^sha256:" },
+    "issuer_origin": { "type": "string", "format": "uri" },
+    "participant_app": { "type": "string" },
+    "declared_roles": { "type": "array", "items": { "type": "string" } },
+    "created_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "verification_url": { "type": "string", "format": "uri" },
+    "receipt_signature": { "type": "string" },
+    "human_summary": { "type": "string" }
+  },
+  "additionalProperties": false
+}

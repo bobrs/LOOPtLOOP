@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api.looptloop.online/schemas/authorization-acceptance.schema.json",
+  "title": "WITNESSKEY_AUTHORIZATION_ACCEPTANCE_0_1",
+  "type": "object",
+  "required": ["schema", "offer_id", "accepted_by", "consent_action", "consent_prompt_hash"],
+  "properties": {
+    "schema": { "const": "WITNESSKEY_AUTHORIZATION_ACCEPTANCE_0_1" },
+    "offer_id": { "type": "string", "pattern": "^wo_" },
+    "accepted_by": {
+      "type": "object",
+      "required": ["app", "participant_ref", "participant_role"],
+      "properties": {
+        "app": { "type": "string" },
+        "participant_ref": { "type": "string" },
+        "participant_role": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "consent_action": { "const": "accept" },
+    "consent_prompt_hash": { "type": "string", "pattern": "^sha256:" },
+    "participant_signature": { "type": "string" }
+  },
+  "additionalProperties": false
+}
