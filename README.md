@@ -148,3 +148,39 @@ Fetch and verify the created authorization event after replacing `<event_id>`:
 curl -sS http://127.0.0.1:8787/v0/authorization-events/<event_id>
 curl -sS http://127.0.0.1:8787/v0/authorization-events/<event_id>/verify
 ```
+
+## Receipt signing
+
+v0.1 development signing uses HMAC-SHA256 with `RECEIPT_SIGNING_SECRET`. The implementation is isolated in:
+
+- `src/signing/canonicalize.ts`
+- `src/signing/receipt-signing.ts`
+
+The signature is computed over a stable canonical material object, not over ad hoc response JSON. The covered fields are:
+
+- `schema`
+- `event_id`
+- `offer_id`
+- `loop_id`
+- `event_type`
+- `issuer_name`
+- `issuer_origin`
+- `payload_hash`
+- `participant_app`
+- `participant_ref`
+- `participant_role`
+- `declared_roles`
+- `consent_prompt_hash`
+- `storage_policy`
+- `claims_policy`
+- `created_at`
+- `expires_at`
+- `verification_url`
+
+`receipt_signature` is explicitly excluded from the signed material.
+
+Planned upgrade path after v0.1:
+
+- keep the same canonical material definition
+- replace HMAC-SHA256 with Ed25519
+- publish a verification key and rotation policy

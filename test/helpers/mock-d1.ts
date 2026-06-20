@@ -283,6 +283,14 @@ export function listObjectKeys(value: unknown): string[] {
   return Object.keys(objectValue).flatMap((key) => [key, ...listObjectKeys(objectValue[key])]);
 }
 
+export function parseStoredObject(value: string): Record<string, unknown> {
+  return JSON.parse(value) as Record<string, unknown>;
+}
+
+export function parseStoredArray(value: string): string[] {
+  return JSON.parse(value) as string[];
+}
+
 function normalizeSql(query: string): string {
   return query.replace(/\s+/g, " ").trim();
 }

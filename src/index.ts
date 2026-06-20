@@ -1,6 +1,7 @@
 import type { Env } from "./types";
+import { signReceiptMaterial, verifyReceiptMaterialSignature } from "./signing/receipt-signing";
 import { corsPreflight, withCors } from "./utils/cors";
-import { hmacSha256Text, sha256Text } from "./utils/hash";
+import { sha256Text } from "./utils/hash";
 import { makeId } from "./utils/ids";
 import { json, jsonError } from "./utils/json";
 import { isHttpsOrLocalUrl, isSha256Hash, isStringArray } from "./utils/validation";
@@ -265,6 +266,28 @@ async function handleAcceptOffer(request: Request, env: Env, offerId: string): P
   const loopId = makeId("loop");
   const verificationBaseUrl = env.WITNESSKEY_VERIFY_BASE_URL || DEFAULT_VERIFY_BASE_URL;
   const verificationUrl = `${verificationBaseUrl.replace(/\/$/, "")}/${eventId}`;
+  const declaredRoles = parseJsonArray(offer.declared_roles_json);
+  const storagePolicy = parseJsonObject(offer.storage_policy_json);
+  const claimsPolicy = parseJsonObject(offer.claims_policy_json);
+  const signingInput = {
+    eventId,
+    offerId: offer.id,
+    loopId,
+    eventType: EVENT_TYPE,
+    issuerName: offer.issuer_name,
+    issuerOrigin: offer.issuer_origin,
+    payloadHash: offer.payload_hash,
+    participantApp: validated.accepted_by.app,
+    participantRef: validated.accepted_by.participant_ref,
+    participantRole: validated.accepted_by.participant_role,
+    declaredRoles,
+    consentPromptHash: offer.consent_prompt_hash,
+    storagePolicy,
+    claimsPolicy,
+    createdAt,
+    expiresAt: null,
+    verificationUrl
+  };
   const receiptPayload = {
     schema: RECEIPT_SCHEMA,
     receipt_id: makeId("wr"),
@@ -274,12 +297,12 @@ async function handleAcceptOffer(request: Request, env: Env, offerId: string): P
     payload_hash: offer.payload_hash,
     issuer_origin: offer.issuer_origin,
     participant_app: validated.accepted_by.app,
-    declared_roles: parseJsonArray(offer.declared_roles_json),
+    declared_roles: declaredRoles,
     created_at: createdAt,
     verification_url: verificationUrl,
     human_summary: `Witnessed ${EVENT_TYPE} for ${offer.issuer_origin} using hash-only authorization evidence.`
   };
-  const receiptSignature = await signReceiptPayload(receiptPayload, env);
+  const receiptSignature = await signReceiptMaterial(signingInput, getReceiptSigningSecret(env));
   const receipt = {
     ...receiptPayload,
     receipt_signature: receiptSignature
@@ -394,8 +417,11 @@ async function handleVerifyEvent(env: Env, eventId: string): Promise<Response> {
     return jsonError("event_not_found", "Authorization event not found.", 404);
   }
 
-  const receipt = parseJsonObject(event.receipt_json);
-  const isValid = await verifyReceiptSignature(receipt, event.receipt_signature, env);
+  const isValid = await verifyReceiptMaterialSignature(
+    buildReceiptSignatureInputFromEvent(event),
+    event.receipt_signature,
+    getReceiptSigningSecret(env)
+  );
   return json({
     event_id: event.id,
     event_status: event.status,
@@ -628,13 +654,28 @@ function isExpired(expiresAt: string): boolean {
   return new Date(expiresAt).getTime() <= Date.now();
 }
 
-async function signReceiptPayload(receiptPayload: JsonMap, env: Env): Promise<string> {
-  const signingSecret = env.RECEIPT_SIGNING_SECRET || "development-receipt-signing-secret";
-  return hmacSha256Text(signingSecret, JSON.stringify(receiptPayload));
+function buildReceiptSignatureInputFromEvent(event: EventRow) {
+  return {
+    eventId: event.id,
+    offerId: event.offer_id,
+    loopId: event.loop_id,
+    eventType: event.event_type,
+    issuerName: event.issuer_name,
+    issuerOrigin: event.issuer_origin,
+    payloadHash: event.payload_hash,
+    participantApp: event.participant_app,
+    participantRef: event.participant_ref,
+    participantRole: event.participant_role,
+    declaredRoles: parseJsonArray(event.declared_roles_json),
+    consentPromptHash: event.consent_prompt_hash,
+    storagePolicy: parseJsonObject(event.storage_policy_json),
+    claimsPolicy: parseJsonObject(event.claims_policy_json),
+    createdAt: event.created_at,
+    expiresAt: event.expires_at,
+    verificationUrl: event.verification_url
+  };
 }
 
-async function verifyReceiptSignature(receipt: JsonMap, actualSignature: string, env: Env): Promise<boolean> {
-  const { receipt_signature: _receiptSignature, ...unsignedReceipt } = receipt;
-  const expectedSignature = await signReceiptPayload(unsignedReceipt, env);
-  return expectedSignature === actualSignature;
+function getReceiptSigningSecret(env: Env): string {
+  return env.RECEIPT_SIGNING_SECRET || "development-receipt-signing-secret";
 }
