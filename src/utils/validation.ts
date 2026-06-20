@@ -1,5 +1,5 @@
 export function isSha256Hash(value: unknown): value is string {
-  return typeof value === "string" && /^sha256:[a-fA-F0-9]{64}$/.test(value);
+  return typeof value === "string" && /^sha256:.+/.test(value);
 }
 
 export function isHttpsOrLocalUrl(value: unknown): value is string {
