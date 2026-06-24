@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LOOPtLOOP Provenance Verification</title>
+<style>
+  :root {
+    --bg: #f2f0ea;
+    --ink: #191919;
+    --muted: #64615a;
+    --panel: rgba(255, 255, 255, 0.84);
+    --line: rgba(25, 25, 25, 0.1);
+    --accent: #0c6258;
+    --warn: #9d5b0a;
+    --bad: #8a2330;
+    --shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(12, 98, 88, 0.12), transparent 30%),
+      linear-gradient(180deg, #faf7f1 0%, var(--bg) 100%);
+  }
+  main {
+    width: min(1040px, calc(100vw - 32px));
+    margin: 0 auto;
+    padding: 28px 0 56px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+    padding: 24px;
+  }
+  h1, h2, h3, p { margin: 0; }
+  h1 {
+    font-size: clamp(2rem, 4vw, 4.2rem);
+    line-height: 0.96;
+    letter-spacing: -0.05em;
+    margin-bottom: 12px;
+  }
+  .eyebrow {
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .lede {
+    color: var(--muted);
+    max-width: 60ch;
+  }
+  .stack {
+    display: grid;
+    gap: 20px;
+    margin-top: 20px;
+  }
+  .controls,
+  .summary {
+    display: grid;
+    gap: 14px;
+  }
+  .controls-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  input, button {
+    font: inherit;
+  }
+  input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.88);
+    color: var(--ink);
+  }
+  button {
+    appearance: none;
+    border: 0;
+    border-radius: 999px;
+    padding: 12px 18px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent) 0%, #163833 100%);
+  }
+  button.secondary {
+    color: var(--ink);
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid var(--line);
+  }
+  .status {
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(25, 25, 25, 0.06);
+    color: var(--muted);
+  }
+  .status.warn { color: var(--warn); }
+  .status.bad { color: var(--bad); }
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .fact {
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.72);
+  }
+  .fact span {
+    display: block;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .code {
+    font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: clamp(2rem, 5vw, 3.8rem);
+    letter-spacing: 0.14em;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 0.96rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  ul {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--muted);
+  }
+  li { margin-bottom: 8px; }
+  @media (max-width: 760px) {
+    .facts {
+      grid-template-columns: 1fr;
+    }
+    table, thead, tbody, th, td, tr {
+      display: block;
+    }
+    thead { display: none; }
+    tr {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      margin-bottom: 12px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+    td {
+      border-bottom: 1px solid var(--line);
+    }
+    td:last-child {
+      border-bottom: 0;
+    }
+    td::before {
+      content: attr(data-label);
+      display: block;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+  }
+</style>
+</head>
+<body>
+<main>
+  <section class="panel">
+    <p class="eyebrow">Provenance Verification</p>
+    <h1>Check whether a video visibly contained a live provenance loop.</h1>
+    <p class="lede">
+      WitnessKey verifies a narrow claim: the recorded frames visibly included an active LOOPtLOOP provenance code.
+      It does not verify truth, identity, or that the final file was never edited.
+    </p>
+  </section>
+
+  <section class="stack">
+    <section class="panel controls">
+      <div>
+        <label for="apiBase">API base</label>
+        <input id="apiBase" type="url" spellcheck="false">
+      </div>
+      <div>
+        <label for="loopId">Loop ID</label>
+        <input id="loopId" type="text" placeholder="LP-...">
+      </div>
+      <div class="controls-row">
+        <button id="loadLoop">Load verifier</button>
+        <button id="refreshLoop" class="secondary" type="button">Refresh</button>
+      </div>
+      <p id="status" class="status">Provide a loop ID to load provenance metadata.</p>
+    </section>
+
+    <section class="panel summary">
+      <div>
+        <p class="eyebrow">Loop summary</p>
+        <h2 id="summaryTitle">No loop loaded</h2>
+      </div>
+      <div class="facts">
+        <div class="fact"><span>Status</span><strong id="statusValue">--</strong></div>
+        <div class="fact"><span>Code step</span><strong id="stepValue">--</strong></div>
+        <div class="fact"><span>Created at</span><strong id="createdValue">--</strong></div>
+        <div class="fact"><span>Expires at</span><strong id="expiresValue">--</strong></div>
+      </div>
+      <div class="fact">
+        <span>Verify URL</span>
+        <a id="verifyUrl" href="#" target="_blank" rel="noopener noreferrer">--</a>
+      </div>
+      <div class="fact">
+        <span>Current live code</span>
+        <strong class="code" id="currentCode">----</strong>
+        <p id="currentWindowCopy" class="lede" style="margin-top:10px;">Current window unavailable.</p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div>
+        <p class="eyebrow">Observed windows</p>
+        <h2>Stored code windows</h2>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Window start</th>
+            <th>Window end</th>
+          </tr>
+        </thead>
+        <tbody id="windowsTable">
+          <tr><td colspan="3">No stored windows yet.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <div>
+        <p class="eyebrow">Non-claims</p>
+        <h2>What this verifier does not prove</h2>
+      </div>
+      <ul>
+        <li>It does not prove the truth of the video contents.</li>
+        <li>It does not prove identity or who operated the recording device.</li>
+        <li>It does not prove the final exported file was never edited.</li>
+        <li>It proves only that the video visibly participated in a live provenance loop while recording.</li>
+      </ul>
+    </section>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const DEFAULT_API_BASE = "https://api.looptloop.online/v0";
+  const params = new URLSearchParams(window.location.search);
+  const els = {
+    apiBase: document.getElementById("apiBase"),
+    loopId: document.getElementById("loopId"),
+    loadLoop: document.getElementById("loadLoop"),
+    refreshLoop: document.getElementById("refreshLoop"),
+    status: document.getElementById("status"),
+    summaryTitle: document.getElementById("summaryTitle"),
+    statusValue: document.getElementById("statusValue"),
+    stepValue: document.getElementById("stepValue"),
+    createdValue: document.getElementById("createdValue"),
+    expiresValue: document.getElementById("expiresValue"),
+    verifyUrl: document.getElementById("verifyUrl"),
+    currentCode: document.getElementById("currentCode"),
+    currentWindowCopy: document.getElementById("currentWindowCopy"),
+    windowsTable: document.getElementById("windowsTable")
+  };
+
+  els.apiBase.value = params.get("api_base") || DEFAULT_API_BASE;
+  els.loopId.value = params.get("loop_id") || "";
+
+  function setStatus(message, kind) {
+    els.status.textContent = message;
+    els.status.className = "status" + (kind ? " " + kind : "");
+  }
+
+  async function apiRequest(path) {
+    const response = await fetch(els.apiBase.value.replace(/\/$/, "") + path, {
+      method: "GET",
+      headers: { Accept: "application/json" }
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = payload && payload.error ? payload.error : {};
+      throw new Error(error.message || error.code || ("Request failed with status " + response.status));
+    }
+    return payload;
+  }
+
+  function renderWindows(windows) {
+    if (!Array.isArray(windows) || windows.length === 0) {
+      els.windowsTable.innerHTML = "<tr><td colspan=\"3\">No stored windows yet.</td></tr>";
+      return;
+    }
+
+    els.windowsTable.innerHTML = windows.map(function (entry) {
+      return [
+        "<tr>",
+        "<td data-label=\"Code\"><strong>" + entry.code + "</strong></td>",
+        "<td data-label=\"Window start\">" + new Date(entry.window_start).toLocaleString() + "</td>",
+        "<td data-label=\"Window end\">" + new Date(entry.window_end).toLocaleString() + "</td>",
+        "</tr>"
+      ].join("");
+    }).join("");
+  }
+
+  async function loadLoop() {
+    const loopId = els.loopId.value.trim();
+    if (!loopId) {
+      setStatus("Missing loop ID.", "bad");
+      return;
+    }
+
+    setStatus("Loading provenance loop...");
+
+    try {
+      const loop = await apiRequest("/provenance-loops/" + encodeURIComponent(loopId));
+      els.summaryTitle.textContent = loop.loop_id;
+      els.statusValue.textContent = loop.status;
+      els.stepValue.textContent = loop.code_step_seconds + " seconds";
+      els.createdValue.textContent = new Date(loop.created_at).toLocaleString();
+      els.expiresValue.textContent = new Date(loop.expires_at).toLocaleString();
+      els.verifyUrl.href = loop.verify_url;
+      els.verifyUrl.textContent = loop.verify_url;
+      renderWindows(loop.observed_windows);
+
+      try {
+        const current = await apiRequest("/provenance-loops/" + encodeURIComponent(loopId) + "/current");
+        els.currentCode.textContent = current.current_code;
+        els.currentWindowCopy.textContent =
+          "Window " + new Date(current.window_start).toLocaleTimeString() +
+          " to " + new Date(current.window_end).toLocaleTimeString() +
+          " with " + current.seconds_remaining + " seconds remaining.";
+      } catch (currentError) {
+        els.currentCode.textContent = "----";
+        els.currentWindowCopy.textContent = String(currentError.message || currentError);
+      }
+
+      setStatus("Verifier loaded.");
+    } catch (error) {
+      setStatus(String(error.message || error), "bad");
+    }
+  }
+
+  els.loadLoop.addEventListener("click", loadLoop);
+  els.refreshLoop.addEventListener("click", loadLoop);
+  if (els.loopId.value) {
+    loadLoop();
+  }
+}());
+</script>
+</body>
+</html>
