@@ -11,10 +11,12 @@
     --muted: #665d4a;
     --line: rgba(23, 19, 12, 0.12);
     --panel: rgba(255, 251, 244, 0.88);
+    --panel-strong: rgba(255, 251, 244, 0.94);
     --accent: #0e7a6d;
     --accent-strong: #07453e;
     --warn: #9d4f10;
     --bad: #8f1d2c;
+    --greenscreen: #00ff00;
     --shadow: 0 24px 80px rgba(23, 19, 12, 0.14);
   }
   * { box-sizing: border-box; }
@@ -138,6 +140,40 @@
   }
   .status.warn { color: var(--warn); }
   .status.bad { color: var(--bad); }
+  .toggle-stack {
+    display: grid;
+    gap: 12px;
+  }
+  .toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.7);
+  }
+  .toggle input {
+    width: 22px;
+    height: 22px;
+    margin: 0;
+    accent-color: var(--accent);
+    flex: 0 0 auto;
+  }
+  .toggle-copy {
+    display: grid;
+    gap: 4px;
+  }
+  .toggle-copy strong {
+    font-size: 1rem;
+  }
+  .toggle-copy span {
+    color: var(--muted);
+    font-size: 0.93rem;
+  }
+  .toggle.dim {
+    opacity: 0.48;
+  }
   .display {
     position: relative;
     overflow: hidden;
@@ -213,6 +249,59 @@
     margin-bottom: 8px;
     color: var(--muted);
   }
+  body.greenscreen {
+    background: var(--greenscreen);
+  }
+  body.greenscreen .hero,
+  body.greenscreen .controls,
+  body.greenscreen .claims {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+  body.greenscreen #displayPanel {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    padding: 0;
+  }
+  body.greenscreen .display::after {
+    display: none;
+  }
+  body.greenscreen .display-card {
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+    padding: 24px;
+    backdrop-filter: blur(10px);
+  }
+  body.greenscreen .ticker {
+    background: rgba(15, 18, 17, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: var(--shadow);
+  }
+  body.greenscreen #displayPanel.watermark .display-card,
+  body.greenscreen #displayPanel.watermark .ticker {
+    opacity: 0.72;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    transform: scale(0.92);
+    transform-origin: center center;
+  }
+  body.greenscreen #displayPanel.watermark .display-card {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.22)),
+      repeating-linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, 0.08) 0 8px,
+        rgba(14, 122, 109, 0.08) 8px 16px
+      );
+  }
+  body.greenscreen #displayPanel.watermark .ticker {
+    background: rgba(15, 18, 17, 0.62);
+  }
   @media (max-width: 860px) {
     .layout {
       grid-template-columns: 1fr;
@@ -258,6 +347,23 @@
           <button id="fullMode" class="secondary mode-pill" type="button" aria-pressed="true">Full-card mode</button>
           <button id="compactMode" class="secondary mode-pill" type="button" aria-pressed="false">Compact single-line mode</button>
         </div>
+      </div>
+      <div class="toggle-stack">
+        <label>Capture effects</label>
+        <label class="toggle" for="greenScreenMode">
+          <input id="greenScreenMode" type="checkbox">
+          <span class="toggle-copy">
+            <strong>Green screen background</strong>
+            <span>Turn the window background chroma green while keeping the active overlay card visible.</span>
+          </span>
+        </label>
+        <label id="watermarkToggleWrap" class="toggle dim" for="watermarkMode">
+          <input id="watermarkMode" type="checkbox" disabled>
+          <span class="toggle-copy">
+            <strong>Green screen watermark effect</strong>
+            <span>Fade and soften the active card so it behaves more like a persistent watermark over green screen.</span>
+          </span>
+        </label>
       </div>
       <p id="status" class="status">Ready to create a provenance loop.</p>
     </section>
@@ -324,6 +430,9 @@
     refreshLoop: document.getElementById("refreshLoop"),
     fullMode: document.getElementById("fullMode"),
     compactMode: document.getElementById("compactMode"),
+    greenScreenMode: document.getElementById("greenScreenMode"),
+    watermarkMode: document.getElementById("watermarkMode"),
+    watermarkToggleWrap: document.getElementById("watermarkToggleWrap"),
     status: document.getElementById("status"),
     displayPanel: document.getElementById("displayPanel"),
     codeValue: document.getElementById("codeValue"),
@@ -341,7 +450,9 @@
     loopId: null,
     verifyUrl: null,
     timer: null,
-    mode: "full"
+    mode: "full",
+    greenScreen: false,
+    watermark: false
   };
 
   els.apiBase.value = params.get("api_base") || DEFAULT_API_BASE;
@@ -356,6 +467,25 @@
     els.displayPanel.classList.toggle("compact", mode === "compact");
     els.fullMode.setAttribute("aria-pressed", String(mode === "full"));
     els.compactMode.setAttribute("aria-pressed", String(mode === "compact"));
+  }
+
+  function syncGreenScreenUi() {
+    document.body.classList.toggle("greenscreen", state.greenScreen);
+    els.displayPanel.classList.toggle("watermark", state.greenScreen && state.watermark);
+    els.watermarkMode.disabled = !state.greenScreen;
+    els.watermarkToggleWrap.classList.toggle("dim", !state.greenScreen);
+  }
+
+  function setGreenScreen(enabled) {
+    state.greenScreen = enabled;
+    els.greenScreenMode.checked = enabled;
+    syncGreenScreenUi();
+  }
+
+  function setWatermark(enabled) {
+    state.watermark = enabled;
+    els.watermarkMode.checked = enabled;
+    syncGreenScreenUi();
   }
 
   async function apiRequest(path, options) {
@@ -427,6 +557,14 @@
   els.refreshLoop.addEventListener("click", refreshCurrent);
   els.fullMode.addEventListener("click", () => setMode("full"));
   els.compactMode.addEventListener("click", () => setMode("compact"));
+  els.greenScreenMode.addEventListener("change", function () {
+    setGreenScreen(els.greenScreenMode.checked);
+  });
+  els.watermarkMode.addEventListener("change", function () {
+    setWatermark(els.watermarkMode.checked);
+  });
+  setGreenScreen(params.get("green_screen") === "1");
+  setWatermark(params.get("watermark") === "1");
   setMode("full");
 }());
 </script>
