@@ -149,6 +149,73 @@ curl -sS http://127.0.0.1:8787/v0/authorization-events/<event_id>
 curl -sS http://127.0.0.1:8787/v0/authorization-events/<event_id>/verify
 ```
 
+## Provenance loop prototype
+
+Minimal provenance loop endpoints:
+
+```txt
+POST /v0/provenance-loops
+GET  /v0/provenance-loops/:loop_id
+GET  /v0/provenance-loops/:loop_id/current
+```
+
+The provenance loop makes a narrow claim:
+
+```txt
+During recording, this video visibly contained a live provenance signal that can be verified later.
+```
+
+It does not prove video truth, identity, or that the final exported file was never edited.
+
+## Provenance manual validation
+
+1. Start the Worker and local D1 database:
+
+```bash
+npm install
+npm run d1:migrate:local
+npm run dev:local
+```
+
+2. Serve the static `public` directory from an allowed local origin:
+
+```bash
+python3 -m http.server 5173 -d public
+```
+
+3. Open the live overlay page with the local API override:
+
+```txt
+http://localhost:5173/provenance/?api_base=http://127.0.0.1:8787/v0
+```
+
+4. Create a live loop and confirm the page shows:
+   - a new `LP-...` loop ID
+   - a rotating live code
+   - a countdown
+   - a verification URL
+   - both `Full-card mode` and `Compact single-line mode`
+
+5. Record a short screen capture while the overlay is visible.
+
+6. Open the verifier page with the same local API override:
+
+```txt
+http://localhost:5173/provenance/verify/?loop_id=<loop_id>&api_base=http://127.0.0.1:8787/v0
+```
+
+7. Confirm the verifier shows:
+   - loop metadata
+   - active or expired status
+   - stored code windows
+   - the same visible code window that appeared during recording when that window has been observed by the API
+
+8. Confirm the non-claims remain explicit:
+   - does not prove video truth
+   - does not prove identity
+   - does not prove the final file is unedited
+   - proves only visible participation in a live provenance loop
+
 ## WitnessMark manual validation
 
 There is no automated browser harness in this repo for the WitnessMark page. Validate the external integration manually:

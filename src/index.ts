@@ -1,3 +1,17 @@
+import {
+  buildCurrentProvenanceWindow,
+  buildProvenanceVerifyUrl,
+  DEFAULT_PROVENANCE_CODE_STEP_SECONDS,
+  DEFAULT_PROVENANCE_LOOP_TTL_SECONDS,
+  DEFAULT_PROVENANCE_VERIFY_BASE_URL,
+  makeProvenanceLoopId,
+  makeProvenanceWindowId,
+  PROVENANCE_WINDOW_HISTORY_LIMIT,
+  resolveProvenanceLoopStatus,
+  SUPPORTED_PROVENANCE_CODE_STEP_SECONDS,
+  type ProvenanceCodeWindowRow,
+  type ProvenanceLoopRow
+} from "./provenance/loops";
 import type { Env } from "./types";
 import { signReceiptMaterial, verifyReceiptMaterialSignature } from "./signing/receipt-signing";
 import { corsPreflight, withCors } from "./utils/cors";
@@ -15,6 +29,7 @@ const ACCEPTANCE_SCHEMA = "WITNESSKEY_AUTHORIZATION_ACCEPTANCE_0_1";
 const EVENT_SCHEMA = "WITNESSKEY_AUTHORIZATION_EVENT_0_1";
 const RECEIPT_SCHEMA = "WITNESSKEY_AUTHORIZATION_RECEIPT_0_1";
 const OFFER_TTL_MS = 5 * 60 * 1000;
+const PROVENANCE_LOOP_TTL_MS = DEFAULT_PROVENANCE_LOOP_TTL_SECONDS * 1000;
 const PRIVATE_PAYLOAD_FIELDS = ["private_payload", "private_payload_text"];
 const DEFAULT_STORAGE_POLICY = {
   private_payload_storage: "never",
@@ -55,6 +70,10 @@ interface AcceptOfferRequest {
   consent_action: string;
   consent_prompt_hash: string;
   participant_signature?: string;
+}
+
+interface CreateProvenanceLoopRequest {
+  code_step_seconds?: number;
 }
 
 interface OfferRow {
@@ -121,6 +140,14 @@ export default {
           canonical_base_url: CANONICAL_API_BASE_URL,
           invariant: "Private payload stays private. This API witnesses hashes and consent envelopes, not private payloads."
         });
+      } else if (request.method === "POST" && path === "/v0/provenance-loops") {
+        response = await handleCreateProvenanceLoop(request, env);
+      } else if (request.method === "GET" && /^\/v0\/provenance-loops\/[^/]+\/current$/.test(path)) {
+        const loopId = path.split("/")[3]!;
+        response = await handleGetCurrentProvenanceLoop(env, loopId);
+      } else if (request.method === "GET" && /^\/v0\/provenance-loops\/[^/]+$/.test(path)) {
+        const loopId = path.split("/").pop()!;
+        response = await handleGetProvenanceLoop(env, loopId);
       } else if (request.method === "POST" && path === "/v0/authorization-offers") {
         response = await handleCreateOffer(request, env);
       } else if (request.method === "GET" && /^\/v0\/authorization-offers\/[^/]+$/.test(path)) {
@@ -224,6 +251,109 @@ async function handleCreateOffer(request: Request, env: Env): Promise<Response> 
     },
     { status: 201 }
   );
+}
+
+async function handleCreateProvenanceLoop(request: Request, env: Env): Promise<Response> {
+  const parsedBody = await parseJsonBody(request, true);
+  if (parsedBody instanceof Response) return parsedBody;
+
+  const privateField = findPrivatePayloadField(parsedBody);
+  if (privateField) {
+    return jsonError("private_payload_not_allowed", `Field "${privateField}" is not accepted in provenance loop creation.`, 400);
+  }
+
+  const validated = validateCreateProvenanceLoopRequest(parsedBody);
+  if (validated instanceof Response) return validated;
+
+  const now = Date.now();
+  const createdAt = new Date(now).toISOString();
+  const loopId = makeProvenanceLoopId();
+  const verifyUrl = buildProvenanceVerifyUrl(
+    env.PROVENANCE_VERIFY_BASE_URL || DEFAULT_PROVENANCE_VERIFY_BASE_URL,
+    loopId
+  );
+  const loop: ProvenanceLoopRow = {
+    id: loopId,
+    created_at: createdAt,
+    expires_at: new Date(now + PROVENANCE_LOOP_TTL_MS).toISOString(),
+    closed_at: null,
+    status: "active",
+    code_step_seconds: validated.code_step_seconds ?? DEFAULT_PROVENANCE_CODE_STEP_SECONDS,
+    verify_url: verifyUrl
+  };
+
+  await env.DB.prepare(
+    `INSERT INTO provenance_loops (
+      id, created_at, expires_at, closed_at, status, code_step_seconds, verify_url
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(
+      loop.id,
+      loop.created_at,
+      loop.expires_at,
+      loop.closed_at,
+      loop.status,
+      loop.code_step_seconds,
+      loop.verify_url
+    )
+    .run();
+
+  const currentWindow = await buildAndStoreCurrentProvenanceWindow(env, loop, now);
+  return json(
+    mapProvenanceLoopRowToResponse(loop, [
+      {
+        code: currentWindow.code,
+        window_start: currentWindow.window_start,
+        window_end: currentWindow.window_end
+      }
+    ]),
+    { status: 201 }
+  );
+}
+
+async function handleGetProvenanceLoop(env: Env, loopId: string): Promise<Response> {
+  const loop = await getProvenanceLoopById(env, loopId);
+  if (!loop) {
+    return jsonError("provenance_loop_not_found", "Provenance loop not found.", 404);
+  }
+
+  const hydratedLoop = await hydrateProvenanceLoopStatus(env, loop);
+  if (hydratedLoop.status === "active") {
+    await buildAndStoreCurrentProvenanceWindow(env, hydratedLoop);
+  }
+
+  const windows = await getObservedProvenanceWindows(env, loopId, PROVENANCE_WINDOW_HISTORY_LIMIT);
+  return json(mapProvenanceLoopRowToResponse(hydratedLoop, windows.map((window) => ({
+    code: window.code,
+    window_start: window.window_start,
+    window_end: window.window_end
+  }))));
+}
+
+async function handleGetCurrentProvenanceLoop(env: Env, loopId: string): Promise<Response> {
+  const loop = await getProvenanceLoopById(env, loopId);
+  if (!loop) {
+    return jsonError("provenance_loop_not_found", "Provenance loop not found.", 404);
+  }
+
+  const hydratedLoop = await hydrateProvenanceLoopStatus(env, loop);
+  if (hydratedLoop.status === "closed") {
+    return jsonError("provenance_loop_closed", "Provenance loop is closed.", 409);
+  }
+  if (hydratedLoop.status === "expired") {
+    return jsonError("provenance_loop_expired", "Provenance loop has expired.", 409);
+  }
+
+  const currentWindow = await buildAndStoreCurrentProvenanceWindow(env, hydratedLoop);
+  return json({
+    loop_id: hydratedLoop.id,
+    status: hydratedLoop.status,
+    current_code: currentWindow.code,
+    window_start: currentWindow.window_start,
+    window_end: currentWindow.window_end,
+    seconds_remaining: currentWindow.seconds_remaining,
+    verify_url: hydratedLoop.verify_url
+  });
 }
 
 async function handleGetOffer(env: Env, offerId: string): Promise<Response> {
@@ -436,6 +566,23 @@ async function handleVerifyEvent(env: Env, eventId: string): Promise<Response> {
   });
 }
 
+async function getProvenanceLoopById(env: Env, loopId: string): Promise<ProvenanceLoopRow | null> {
+  return env.DB.prepare("SELECT * FROM provenance_loops WHERE id = ?").bind(loopId).first<ProvenanceLoopRow>();
+}
+
+async function getObservedProvenanceWindows(
+  env: Env,
+  loopId: string,
+  limit: number
+): Promise<ProvenanceCodeWindowRow[]> {
+  const result = await env.DB.prepare(
+    "SELECT * FROM provenance_code_windows WHERE loop_id = ? ORDER BY window_start DESC LIMIT ?"
+  )
+    .bind(loopId, limit)
+    .all<ProvenanceCodeWindowRow>();
+  return result.results ?? [];
+}
+
 async function getOfferById(env: Env, offerId: string): Promise<OfferRow | null> {
   return env.DB.prepare("SELECT * FROM authorization_offers WHERE id = ?").bind(offerId).first<OfferRow>();
 }
@@ -446,6 +593,10 @@ async function getEventById(env: Env, eventId: string): Promise<EventRow | null>
 
 async function updateOfferStatus(env: Env, offerId: string, status: string): Promise<void> {
   await env.DB.prepare("UPDATE authorization_offers SET status = ? WHERE id = ?").bind(status, offerId).run();
+}
+
+async function updateProvenanceLoopStatus(env: Env, loopId: string, status: string): Promise<void> {
+  await env.DB.prepare("UPDATE provenance_loops SET status = ? WHERE id = ?").bind(status, loopId).run();
 }
 
 function mapOfferRowToResponse(offer: OfferRow): JsonMap {
@@ -520,6 +671,29 @@ function mapEventRowToResponse(event: EventRow): JsonMap {
   return response;
 }
 
+function mapProvenanceLoopRowToResponse(
+  loop: ProvenanceLoopRow,
+  observedWindows: Array<{ code: string; window_start: string; window_end: string }>
+): JsonMap {
+  const response: JsonMap = {
+    loop_id: loop.id,
+    created_at: loop.created_at,
+    expires_at: loop.expires_at,
+    status: loop.status,
+    code_step_seconds: loop.code_step_seconds,
+    verify_url: loop.verify_url
+  };
+
+  if (loop.closed_at) {
+    response.closed_at = loop.closed_at;
+  }
+  if (observedWindows.length > 0) {
+    response.observed_windows = observedWindows;
+  }
+
+  return response;
+}
+
 async function parseJsonBody(request: Request, allowEmptyBody = false): Promise<JsonMap | Response> {
   const rawBody = await request.text();
   if (!rawBody.trim()) {
@@ -580,6 +754,27 @@ function validateCreateOfferRequest(body: JsonMap): CreateOfferRequest | Respons
     declared_roles: body.declared_roles,
     consent_prompt: body.consent_prompt,
     return_url: body.return_url
+  };
+}
+
+function validateCreateProvenanceLoopRequest(body: JsonMap): CreateProvenanceLoopRequest | Response {
+  if (body.code_step_seconds === undefined) {
+    return {};
+  }
+  if (
+    typeof body.code_step_seconds !== "number" ||
+    !Number.isInteger(body.code_step_seconds) ||
+    !SUPPORTED_PROVENANCE_CODE_STEP_SECONDS.includes(body.code_step_seconds as 10 | 30)
+  ) {
+    return jsonError(
+      "invalid_code_step_seconds",
+      `code_step_seconds must be one of ${SUPPORTED_PROVENANCE_CODE_STEP_SECONDS.join(", ")}.`,
+      400
+    );
+  }
+
+  return {
+    code_step_seconds: body.code_step_seconds
   };
 }
 
@@ -658,6 +853,44 @@ function isExpired(expiresAt: string): boolean {
   return new Date(expiresAt).getTime() <= Date.now();
 }
 
+async function hydrateProvenanceLoopStatus(env: Env, loop: ProvenanceLoopRow): Promise<ProvenanceLoopRow> {
+  const resolvedStatus = resolveProvenanceLoopStatus(loop);
+  if (resolvedStatus !== loop.status) {
+    await updateProvenanceLoopStatus(env, loop.id, resolvedStatus);
+    return {
+      ...loop,
+      status: resolvedStatus
+    };
+  }
+
+  return loop;
+}
+
+async function buildAndStoreCurrentProvenanceWindow(
+  env: Env,
+  loop: ProvenanceLoopRow,
+  nowMs = Date.now()
+) {
+  const currentWindow = await buildCurrentProvenanceWindow(loop, getProvenanceLoopSecret(env), nowMs);
+
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO provenance_code_windows (
+      id, loop_id, code, window_start, window_end, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?)`
+  )
+    .bind(
+      makeProvenanceWindowId(loop.id, currentWindow.window_start),
+      loop.id,
+      currentWindow.code,
+      currentWindow.window_start,
+      currentWindow.window_end,
+      new Date(nowMs).toISOString()
+    )
+    .run();
+
+  return currentWindow;
+}
+
 function buildReceiptSignatureInputFromEvent(event: EventRow) {
   return {
     eventId: event.id,
@@ -682,4 +915,8 @@ function buildReceiptSignatureInputFromEvent(event: EventRow) {
 
 function getReceiptSigningSecret(env: Env): string {
   return env.RECEIPT_SIGNING_SECRET || "development-receipt-signing-secret";
+}
+
+function getProvenanceLoopSecret(env: Env): string {
+  return env.PROVENANCE_LOOP_SECRET || env.RECEIPT_SIGNING_SECRET || "development-provenance-loop-secret";
 }
