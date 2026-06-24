@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LOOPtLOOP Provenance Stage</title>
+<style>
+  :root {
+    --bg: #f4efe4;
+    --ink: #17130c;
+    --muted: #665d4a;
+    --line: rgba(23, 19, 12, 0.12);
+    --panel: rgba(255, 251, 244, 0.9);
+    --panel-strong: rgba(255, 251, 244, 0.96);
+    --accent: #0e7a6d;
+    --accent-strong: #07453e;
+    --warn: #9d4f10;
+    --bad: #8f1d2c;
+    --greenscreen: #00ff00;
+    --shadow: 0 24px 80px rgba(23, 19, 12, 0.18);
+    --toolbar-bg: rgba(17, 18, 19, 0.72);
+    --toolbar-border: rgba(255, 255, 255, 0.1);
+    --toolbar-ink: #f7f2e7;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    min-height: 100%;
+  }
+  body {
+    overflow: hidden;
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    background:
+      radial-gradient(circle at top left, rgba(14, 122, 109, 0.18), transparent 34%),
+      radial-gradient(circle at top right, rgba(157, 79, 16, 0.18), transparent 28%),
+      linear-gradient(180deg, #f9f6ef 0%, var(--bg) 100%);
+  }
+  body.stage-mode {
+    min-height: 100vh;
+  }
+  body.greenscreen-mode {
+    background: var(--greenscreen);
+  }
+  a, button {
+    font: inherit;
+  }
+  .stage-toolbar,
+  .controls-reveal {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 20;
+  }
+  .stage-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    max-width: min(92vw, 760px);
+    padding: 10px;
+    border-radius: 18px;
+    background: var(--toolbar-bg);
+    border: 1px solid var(--toolbar-border);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(14px);
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+  .controls-hidden .stage-toolbar {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-8px);
+  }
+  .controls-reveal {
+    display: none;
+  }
+  .controls-hidden .controls-reveal {
+    display: inline-flex;
+  }
+  .toolbar-link,
+  .toolbar-button {
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    padding: 9px 12px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--toolbar-ink);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+  .toolbar-link:hover,
+  .toolbar-button:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+  .toolbar-button[aria-pressed="true"] {
+    background: rgba(14, 122, 109, 0.9);
+    border-color: transparent;
+  }
+  .overlay-shell {
+    position: fixed;
+    top: 32px;
+    left: 32px;
+    z-index: 10;
+    width: min(620px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
+    user-select: none;
+    touch-action: none;
+    cursor: grab;
+  }
+  .drag-locked .overlay-shell {
+    cursor: default;
+  }
+  .overlay-shell.dragging {
+    cursor: grabbing;
+  }
+  .overlay-shell::after {
+    content: "";
+    position: absolute;
+    inset: auto -10% -35% 38%;
+    height: 220px;
+    background: radial-gradient(circle, rgba(14, 122, 109, 0.24), transparent 70%);
+    pointer-events: none;
+  }
+  body.greenscreen-mode .overlay-shell::after {
+    display: none;
+  }
+  .display-card,
+  .ticker {
+    position: relative;
+    z-index: 1;
+  }
+  .display-card {
+    display: grid;
+    gap: 20px;
+    padding: 24px;
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+  }
+  .ticker {
+    display: none;
+    width: min(760px, calc(100vw - 32px));
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 18px;
+    border-radius: 18px;
+    background: rgba(15, 18, 17, 0.92);
+    color: #f8f4ea;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .compact-mode .display-card {
+    display: none;
+  }
+  .compact-mode .ticker {
+    display: flex;
+  }
+  .eyebrow {
+    margin: 0;
+    font-size: 0.82rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-strong);
+  }
+  h1, h2, h3, p {
+    margin: 0;
+  }
+  .status-copy {
+    color: var(--muted);
+  }
+  .status-copy.warn {
+    color: var(--warn);
+  }
+  .status-copy.bad {
+    color: var(--bad);
+  }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .fact {
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.76);
+    border: 1px solid var(--line);
+  }
+  .fact span {
+    display: block;
+    font-size: 0.76rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .code {
+    font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    font-size: clamp(2.9rem, 9vw, 7rem);
+    line-height: 0.9;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+  }
+  .mono {
+    font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+  }
+  .verify-link {
+    color: var(--accent-strong);
+    word-break: break-word;
+  }
+  .ticker strong,
+  .ticker span {
+    font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    letter-spacing: 0.08em;
+  }
+  .ticker strong {
+    font-size: clamp(1.2rem, 3vw, 1.7rem);
+  }
+  .ticker span {
+    font-size: clamp(0.85rem, 2.4vw, 1.05rem);
+  }
+  .watermark-mode .display-card,
+  .watermark-mode .ticker {
+    opacity: 0.74;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    filter: saturate(0.88);
+    transform: scale(0.96);
+    transform-origin: top left;
+  }
+  .watermark-mode .display-card {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0.24)),
+      repeating-linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, 0.08) 0 8px,
+        rgba(14, 122, 109, 0.08) 8px 16px
+      );
+  }
+  .watermark-mode .ticker {
+    background: rgba(15, 18, 17, 0.66);
+  }
+  body.greenscreen-mode .display-card {
+    background: var(--panel-strong);
+  }
+  @media (max-width: 780px) {
+    .stage-toolbar {
+      left: 16px;
+      right: 16px;
+      justify-content: flex-start;
+    }
+    .overlay-shell {
+      width: calc(100vw - 24px);
+      max-width: calc(100vw - 24px);
+    }
+    .meta-grid {
+      grid-template-columns: 1fr;
+    }
+    .ticker {
+      width: calc(100vw - 24px);
+      flex-wrap: wrap;
+    }
+  }
+</style>
+</head>
+<body class="stage-mode">
+  <div id="toolbar" class="stage-toolbar" role="toolbar" aria-label="Stage controls">
+    <a id="backLink" class="toolbar-link" href="../">Back</a>
+    <button id="modeToggle" class="toolbar-button" type="button">Compact</button>
+    <button id="greenToggle" class="toolbar-button" type="button" aria-pressed="false">Green</button>
+    <button id="watermarkToggle" class="toolbar-button" type="button" aria-pressed="false">Watermark</button>
+    <button id="dragToggle" class="toolbar-button" type="button">Lock drag</button>
+    <button id="resetPosition" class="toolbar-button" type="button">Reset position</button>
+    <button id="hideControls" class="toolbar-button" type="button">Hide controls</button>
+  </div>
+
+  <button id="showControls" class="toolbar-button controls-reveal" type="button">Show controls</button>
+
+  <section id="overlayShell" class="overlay-shell" aria-live="polite">
+    <div class="display-card">
+      <p class="eyebrow">Live provenance overlay</p>
+      <div class="code" id="codeValue">----</div>
+      <p id="statusText" class="status-copy">Waiting for loop state.</p>
+      <div class="meta-grid">
+        <div class="fact">
+          <span>Loop ID</span>
+          <strong id="loopIdValue">Missing</strong>
+        </div>
+        <div class="fact">
+          <span>Status</span>
+          <strong id="statusValue">pending</strong>
+        </div>
+        <div class="fact">
+          <span>Countdown</span>
+          <strong id="countdownValue">--</strong>
+        </div>
+        <div class="fact">
+          <span>Window start</span>
+          <strong id="windowStartValue">--</strong>
+        </div>
+        <div class="fact">
+          <span>Window end</span>
+          <strong id="windowEndValue">--</strong>
+        </div>
+        <div class="fact">
+          <span>Overlay mode</span>
+          <strong id="modeValue">Full</strong>
+        </div>
+      </div>
+      <div class="fact">
+        <span>Verify URL</span>
+        <a id="verifyLink" class="verify-link mono" href="#" target="_blank" rel="noopener noreferrer">Not available</a>
+      </div>
+    </div>
+
+    <div class="ticker">
+      <strong id="tickerCode">----</strong>
+      <span id="tickerLoop">Loop pending</span>
+      <span id="tickerCountdown">--</span>
+    </div>
+  </section>
+
+<script>
+(function () {
+  "use strict";
+
+  const DEFAULT_API_BASE = "https://api.looptloop.online/v0";
+  const PREFS_STORAGE_KEY = "witnesskey.provenance.stage.prefs";
+  const params = new URLSearchParams(window.location.search);
+  const els = {
+    toolbar: document.getElementById("toolbar"),
+    backLink: document.getElementById("backLink"),
+    modeToggle: document.getElementById("modeToggle"),
+    greenToggle: document.getElementById("greenToggle"),
+    watermarkToggle: document.getElementById("watermarkToggle"),
+    dragToggle: document.getElementById("dragToggle"),
+    resetPosition: document.getElementById("resetPosition"),
+    hideControls: document.getElementById("hideControls"),
+    showControls: document.getElementById("showControls"),
+    overlayShell: document.getElementById("overlayShell"),
+    codeValue: document.getElementById("codeValue"),
+    statusText: document.getElementById("statusText"),
+    loopIdValue: document.getElementById("loopIdValue"),
+    statusValue: document.getElementById("statusValue"),
+    countdownValue: document.getElementById("countdownValue"),
+    windowStartValue: document.getElementById("windowStartValue"),
+    windowEndValue: document.getElementById("windowEndValue"),
+    modeValue: document.getElementById("modeValue"),
+    verifyLink: document.getElementById("verifyLink"),
+    tickerCode: document.getElementById("tickerCode"),
+    tickerLoop: document.getElementById("tickerLoop"),
+    tickerCountdown: document.getElementById("tickerCountdown")
+  };
+
+  const savedPrefs = readJson(localStorage.getItem(PREFS_STORAGE_KEY));
+  const state = {
+    loopId: (params.get("loop_id") || "").trim(),
+    apiBase: ((params.get("api_base") || DEFAULT_API_BASE).trim().replace(/\/$/, "")) || DEFAULT_API_BASE,
+    mode: readModeParam(params.get("mode")) || readModeParam(savedPrefs.mode) || "full",
+    greenScreen: readBooleanParam("greenscreen", savedPrefs.greenScreen === true),
+    watermark: readBooleanParam("watermark", savedPrefs.watermark === true),
+    dragLocked: savedPrefs.dragLocked === true,
+    controlsHidden: savedPrefs.controlsHidden === true,
+    verifyUrl: null,
+    timer: null,
+    position: { x: 32, y: 32 },
+    dragging: null
+  };
+
+  function readJson(rawValue) {
+    if (!rawValue) return {};
+    try {
+      const parsed = JSON.parse(rawValue);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function readModeParam(value) {
+    return value === "compact" ? "compact" : value === "full" ? "full" : "";
+  }
+
+  function readBooleanParam(name, fallback) {
+    const rawValue = params.get(name);
+    if (rawValue === null) return fallback;
+    return rawValue === "1" || rawValue === "true";
+  }
+
+  function getPositionStorageKey() {
+    return "witnesskey.provenance.stage.position." + (state.loopId || "global");
+  }
+
+  function savePrefs() {
+    localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify({
+      mode: state.mode,
+      greenScreen: state.greenScreen,
+      watermark: state.watermark,
+      dragLocked: state.dragLocked,
+      controlsHidden: state.controlsHidden
+    }));
+  }
+
+  function savePosition() {
+    localStorage.setItem(getPositionStorageKey(), JSON.stringify(state.position));
+  }
+
+  function formatTime(value) {
+    if (!value) return "--";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleTimeString();
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function defaultPosition() {
+    return { x: 32, y: 32 };
+  }
+
+  function applyPosition(position, persist) {
+    const margin = 16;
+    const rect = els.overlayShell.getBoundingClientRect();
+    const width = rect.width || (state.mode === "compact" ? 560 : 620);
+    const height = rect.height || (state.mode === "compact" ? 90 : 420);
+    const maxX = Math.max(margin, window.innerWidth - width - margin);
+    const maxY = Math.max(margin, window.innerHeight - height - margin);
+    const nextPosition = {
+      x: clamp(Math.round(position.x), margin, maxX),
+      y: clamp(Math.round(position.y), margin, maxY)
+    };
+
+    state.position = nextPosition;
+    els.overlayShell.style.left = nextPosition.x + "px";
+    els.overlayShell.style.top = nextPosition.y + "px";
+
+    if (persist) {
+      savePosition();
+    }
+  }
+
+  function restorePosition() {
+    const stored = readJson(localStorage.getItem(getPositionStorageKey()));
+    const nextPosition = {
+      x: typeof stored.x === "number" ? stored.x : defaultPosition().x,
+      y: typeof stored.y === "number" ? stored.y : defaultPosition().y
+    };
+    window.requestAnimationFrame(function () {
+      applyPosition(nextPosition, false);
+    });
+  }
+
+  function syncBackLink() {
+    const backUrl = new URL("../", window.location.href);
+    backUrl.searchParams.set("api_base", state.apiBase);
+    backUrl.searchParams.set("mode", state.mode);
+    backUrl.searchParams.set("green_screen", state.greenScreen ? "1" : "0");
+    backUrl.searchParams.set("watermark", state.watermark ? "1" : "0");
+    els.backLink.href = backUrl.toString();
+  }
+
+  function syncQuery() {
+    const nextUrl = new URL(window.location.href);
+    if (state.loopId) {
+      nextUrl.searchParams.set("loop_id", state.loopId);
+    } else {
+      nextUrl.searchParams.delete("loop_id");
+    }
+    nextUrl.searchParams.set("api_base", state.apiBase);
+    nextUrl.searchParams.set("mode", state.mode);
+    nextUrl.searchParams.set("greenscreen", state.greenScreen ? "1" : "0");
+    nextUrl.searchParams.set("watermark", state.watermark ? "1" : "0");
+    window.history.replaceState({}, "", nextUrl.toString());
+  }
+
+  function setStatus(message, kind) {
+    els.statusText.textContent = message;
+    els.statusText.className = "status-copy" + (kind ? " " + kind : "");
+  }
+
+  function syncToolbarButtons() {
+    els.modeToggle.textContent = state.mode === "full" ? "Compact" : "Full";
+    els.greenToggle.setAttribute("aria-pressed", String(state.greenScreen));
+    els.watermarkToggle.setAttribute("aria-pressed", String(state.watermark));
+    els.dragToggle.textContent = state.dragLocked ? "Unlock drag" : "Lock drag";
+    els.modeValue.textContent = state.mode === "compact" ? "Compact" : "Full";
+  }
+
+  function syncUi() {
+    document.body.classList.toggle("full-mode", state.mode === "full");
+    document.body.classList.toggle("compact-mode", state.mode === "compact");
+    document.body.classList.toggle("greenscreen-mode", state.greenScreen);
+    document.body.classList.toggle("watermark-mode", state.watermark);
+    document.body.classList.toggle("controls-hidden", state.controlsHidden);
+    document.body.classList.toggle("drag-locked", state.dragLocked);
+    syncToolbarButtons();
+    syncBackLink();
+    syncQuery();
+    savePrefs();
+    restorePosition();
+  }
+
+  async function apiRequest(path, options) {
+    const response = await fetch(state.apiBase + path, options);
+    const payload = await response.json().catch(function () {
+      return {};
+    });
+
+    if (!response.ok) {
+      const details = payload && payload.error ? payload.error : {};
+      const error = new Error(details.message || details.code || ("Request failed with status " + response.status));
+      error.code = details.code;
+      error.status = response.status;
+      throw error;
+    }
+
+    return payload;
+  }
+
+  function renderLoop(metadata, current) {
+    const status = (current && current.status) || (metadata && metadata.status) || (state.loopId ? "pending" : "missing");
+    const verifyUrl = (current && current.verify_url) || (metadata && metadata.verify_url) || null;
+    const countdown = current ? current.seconds_remaining + "s remaining" : status === "expired" ? "Loop expired" : "--";
+    const compactCountdown = current ? current.seconds_remaining + "s" : status;
+
+    state.verifyUrl = verifyUrl;
+    els.codeValue.textContent = current ? current.current_code : (status === "expired" || status === "closed" ? "ENDED" : "----");
+    els.loopIdValue.textContent = state.loopId || "Missing";
+    els.statusValue.textContent = status;
+    els.countdownValue.textContent = countdown;
+    els.windowStartValue.textContent = current ? formatTime(current.window_start) : "--";
+    els.windowEndValue.textContent = current
+      ? formatTime(current.window_end)
+      : metadata && metadata.expires_at
+        ? formatTime(metadata.expires_at)
+        : "--";
+
+    if (verifyUrl) {
+      els.verifyLink.href = verifyUrl;
+      els.verifyLink.textContent = verifyUrl;
+    } else {
+      els.verifyLink.removeAttribute("href");
+      els.verifyLink.textContent = "Not available";
+    }
+
+    els.tickerCode.textContent = current ? current.current_code : (status === "expired" || status === "closed" ? "ENDED" : "----");
+    els.tickerLoop.textContent = state.loopId || "Loop missing";
+    els.tickerCountdown.textContent = compactCountdown;
+  }
+
+  async function fetchLoopMetadata() {
+    if (!state.loopId) return null;
+
+    return apiRequest("/provenance-loops/" + encodeURIComponent(state.loopId), {
+      method: "GET",
+      headers: { Accept: "application/json" }
+    });
+  }
+
+  async function refreshLoop() {
+    if (!state.loopId) {
+      renderLoop(null, null);
+      setStatus("Missing loop_id query parameter.", "bad");
+      return false;
+    }
+
+    try {
+      const current = await apiRequest("/provenance-loops/" + encodeURIComponent(state.loopId) + "/current", {
+        method: "GET",
+        headers: { Accept: "application/json" }
+      });
+      renderLoop({ loop_id: state.loopId, status: current.status, verify_url: current.verify_url }, current);
+      setStatus("Live provenance loop is active.");
+      return true;
+    } catch (error) {
+      const terminal = error && (error.code === "provenance_loop_expired" || error.code === "provenance_loop_closed" || error.code === "provenance_loop_not_found");
+
+      if (terminal) {
+        clearInterval(state.timer);
+        state.timer = null;
+      }
+
+      try {
+        const metadata = await fetchLoopMetadata();
+        renderLoop(metadata, null);
+      } catch {
+        renderLoop(null, null);
+      }
+
+      setStatus(String((error && error.message) || error), terminal && error.code === "provenance_loop_not_found" ? "bad" : "warn");
+      return !terminal;
+    }
+  }
+
+  function setMode(mode) {
+    state.mode = mode;
+    syncUi();
+  }
+
+  function setGreenScreen(enabled) {
+    state.greenScreen = enabled;
+    syncUi();
+  }
+
+  function setWatermark(enabled) {
+    state.watermark = enabled;
+    syncUi();
+  }
+
+  function setDragLocked(enabled) {
+    state.dragLocked = enabled;
+    syncUi();
+  }
+
+  function setControlsHidden(enabled) {
+    state.controlsHidden = enabled;
+    syncUi();
+  }
+
+  function resetPosition() {
+    applyPosition(defaultPosition(), true);
+  }
+
+  function startDrag(event) {
+    if (state.dragLocked) return;
+    if (event.pointerType !== "touch" && event.button !== 0) return;
+    if (event.target.closest("a")) return;
+
+    state.dragging = {
+      pointerId: event.pointerId,
+      offsetX: event.clientX - state.position.x,
+      offsetY: event.clientY - state.position.y
+    };
+    els.overlayShell.classList.add("dragging");
+    els.overlayShell.setPointerCapture(event.pointerId);
+  }
+
+  function moveDrag(event) {
+    if (!state.dragging || state.dragging.pointerId !== event.pointerId) return;
+
+    applyPosition({
+      x: event.clientX - state.dragging.offsetX,
+      y: event.clientY - state.dragging.offsetY
+    }, false);
+  }
+
+  function endDrag(event) {
+    if (!state.dragging || state.dragging.pointerId !== event.pointerId) return;
+
+    state.dragging = null;
+    els.overlayShell.classList.remove("dragging");
+    applyPosition(state.position, true);
+    if (els.overlayShell.hasPointerCapture(event.pointerId)) {
+      els.overlayShell.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  els.modeToggle.addEventListener("click", function () {
+    setMode(state.mode === "full" ? "compact" : "full");
+  });
+  els.greenToggle.addEventListener("click", function () {
+    setGreenScreen(!state.greenScreen);
+  });
+  els.watermarkToggle.addEventListener("click", function () {
+    setWatermark(!state.watermark);
+  });
+  els.dragToggle.addEventListener("click", function () {
+    setDragLocked(!state.dragLocked);
+  });
+  els.resetPosition.addEventListener("click", resetPosition);
+  els.hideControls.addEventListener("click", function () {
+    setControlsHidden(true);
+  });
+  els.showControls.addEventListener("click", function () {
+    setControlsHidden(false);
+  });
+  els.overlayShell.addEventListener("pointerdown", startDrag);
+  els.overlayShell.addEventListener("pointermove", moveDrag);
+  els.overlayShell.addEventListener("pointerup", endDrag);
+  els.overlayShell.addEventListener("pointercancel", endDrag);
+  window.addEventListener("resize", function () {
+    applyPosition(state.position, false);
+  });
+
+  syncUi();
+  renderLoop(null, null);
+
+  if (!state.loopId) {
+    setStatus("Missing loop_id query parameter.", "bad");
+  } else {
+    setStatus("Loading live provenance loop...");
+    refreshLoop().then(function (shouldPoll) {
+      if (shouldPoll && !state.timer) {
+        state.timer = window.setInterval(refreshLoop, 1000);
+      }
+    });
+  }
+}());
+</script>
+</body>
+</html>

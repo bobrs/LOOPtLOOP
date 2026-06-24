@@ -341,6 +341,10 @@
         <button id="startLoop">Create live loop</button>
         <button id="refreshLoop" class="secondary" disabled>Refresh code</button>
       </div>
+      <div class="row">
+        <button id="openStage" class="secondary" type="button" disabled>Open overlay stage</button>
+        <button id="openStagePopup" class="secondary" type="button" disabled>Open overlay stage in popup</button>
+      </div>
       <div>
         <label>Display mode</label>
         <div class="row">
@@ -428,6 +432,8 @@
     stepSeconds: document.getElementById("stepSeconds"),
     startLoop: document.getElementById("startLoop"),
     refreshLoop: document.getElementById("refreshLoop"),
+    openStage: document.getElementById("openStage"),
+    openStagePopup: document.getElementById("openStagePopup"),
     fullMode: document.getElementById("fullMode"),
     compactMode: document.getElementById("compactMode"),
     greenScreenMode: document.getElementById("greenScreenMode"),
@@ -457,6 +463,10 @@
 
   els.apiBase.value = params.get("api_base") || DEFAULT_API_BASE;
 
+  function getApiBase() {
+    return (els.apiBase.value || DEFAULT_API_BASE).trim().replace(/\/$/, "") || DEFAULT_API_BASE;
+  }
+
   function setStatus(message, kind) {
     els.status.textContent = message;
     els.status.className = "status" + (kind ? " " + kind : "");
@@ -467,6 +477,7 @@
     els.displayPanel.classList.toggle("compact", mode === "compact");
     els.fullMode.setAttribute("aria-pressed", String(mode === "full"));
     els.compactMode.setAttribute("aria-pressed", String(mode === "compact"));
+    syncStageButtons();
   }
 
   function syncGreenScreenUi() {
@@ -480,16 +491,52 @@
     state.greenScreen = enabled;
     els.greenScreenMode.checked = enabled;
     syncGreenScreenUi();
+    syncStageButtons();
   }
 
   function setWatermark(enabled) {
     state.watermark = enabled;
     els.watermarkMode.checked = enabled;
     syncGreenScreenUi();
+    syncStageButtons();
+  }
+
+  function buildStageUrl() {
+    const stageUrl = new URL("./stage/", window.location.href);
+    stageUrl.searchParams.set("loop_id", state.loopId || "");
+    stageUrl.searchParams.set("api_base", getApiBase());
+    stageUrl.searchParams.set("mode", state.mode);
+    stageUrl.searchParams.set("greenscreen", state.greenScreen ? "1" : "0");
+    stageUrl.searchParams.set("watermark", state.watermark ? "1" : "0");
+    return stageUrl.toString();
+  }
+
+  function syncStageButtons() {
+    const disabled = !state.loopId;
+    els.openStage.disabled = disabled;
+    els.openStagePopup.disabled = disabled;
+  }
+
+  function openStage(popup) {
+    if (!state.loopId) {
+      setStatus("Create a live loop before opening the overlay stage.", "warn");
+      return;
+    }
+
+    const stageUrl = buildStageUrl();
+    const features = popup
+      ? "popup=yes,width=1280,height=900,resizable=yes,scrollbars=no"
+      : "noopener";
+    const target = popup ? "looptloop-provenance-stage" : "_blank";
+    const opened = window.open(stageUrl, target, features);
+
+    if (!opened) {
+      setStatus("Popup was blocked. Use Open overlay stage or allow popups for this page.", "warn");
+    }
   }
 
   async function apiRequest(path, options) {
-    const response = await fetch(els.apiBase.value.replace(/\/$/, "") + path, options);
+    const response = await fetch(getApiBase() + path, options);
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const error = payload && payload.error ? payload.error : {};
@@ -543,6 +590,7 @@
       state.loopId = created.loop_id;
       state.verifyUrl = created.verify_url;
       els.refreshLoop.disabled = false;
+      syncStageButtons();
       await refreshCurrent();
       clearInterval(state.timer);
       state.timer = window.setInterval(refreshCurrent, 1000);
@@ -555,6 +603,12 @@
 
   els.startLoop.addEventListener("click", createLoop);
   els.refreshLoop.addEventListener("click", refreshCurrent);
+  els.openStage.addEventListener("click", function () {
+    openStage(false);
+  });
+  els.openStagePopup.addEventListener("click", function () {
+    openStage(true);
+  });
   els.fullMode.addEventListener("click", () => setMode("full"));
   els.compactMode.addEventListener("click", () => setMode("compact"));
   els.greenScreenMode.addEventListener("change", function () {
@@ -565,7 +619,8 @@
   });
   setGreenScreen(params.get("green_screen") === "1");
   setWatermark(params.get("watermark") === "1");
-  setMode("full");
+  setMode(params.get("mode") === "compact" ? "compact" : "full");
+  syncStageButtons();
 }());
 </script>
 </body>

@@ -189,32 +189,56 @@ python3 -m http.server 5173 -d public
 http://localhost:5173/provenance/?api_base=http://127.0.0.1:8787/v0
 ```
 
-4. Create a live loop and confirm the page shows:
+4. Create a live loop and confirm the setup page shows:
    - a new `LP-...` loop ID
    - a rotating live code
    - a countdown
    - a verification URL
    - both `Full-card mode` and `Compact single-line mode`
+   - `Open overlay stage`
+   - `Open overlay stage in popup`
 
-5. Record a short screen capture while the overlay is visible.
+5. Click `Open overlay stage` and confirm a stage URL opens in the form:
 
-6. Open the verifier page with the same local API override:
+```txt
+http://localhost:5173/provenance/stage/?loop_id=LP-...&mode=full&greenscreen=0&watermark=0&api_base=http://127.0.0.1:8787/v0
+```
+
+6. Confirm the stage page shows only:
+   - the live overlay card
+   - a small floating toolbar
+   - no setup form
+   - no explanatory page copy
+
+7. Toggle `Green` and confirm the full stage background becomes chroma green while the overlay remains visible.
+
+8. Toggle `Watermark` and confirm the overlay softens but remains readable.
+
+9. Switch between `Full` and `Compact` stage modes and confirm both stay readable.
+
+10. Drag the overlay, reload the stage page, and confirm the last position is remembered. Then use `Reset position` and confirm the card returns to its default location.
+
+11. Record a short screen capture while the stage overlay is visible.
+
+12. Open the verifier page with the same local API override:
 
 ```txt
 http://localhost:5173/provenance/verify/?loop_id=<loop_id>&api_base=http://127.0.0.1:8787/v0
 ```
 
-7. Confirm the verifier shows:
+13. Confirm the verifier shows:
    - loop metadata
    - active or expired status
    - stored code windows
    - the same visible code window that appeared during recording when that window has been observed by the API
 
-8. Confirm the non-claims remain explicit:
+14. Confirm the non-claims remain explicit:
    - does not prove video truth
    - does not prove identity
    - does not prove the final file is unedited
    - proves only visible participation in a live provenance loop
+
+15. Confirm no private authorization payload behavior was touched. The provenance setup page, stage page, and verifier page do not request, transmit, or store any private authorization payload text.
 
 ## WitnessMark manual validation
 
