@@ -51,6 +51,15 @@ npm test
 npm run dev:local
 ```
 
+## Recent prototype updates
+
+### June 24, 2026
+
+- Added a dedicated provenance capture stage at `/provenance/stage/` for live overlay recording and OBS/browser capture.
+- Kept `/provenance/` as the setup page and added direct stage launch and popup launch controls.
+- Added full and compact overlay modes, green screen mode, watermark mode, drag positioning, and saved stage UI preferences.
+- Preserved the private authorization witness invariant: no private authorization payload text is requested, transmitted, stored, or logged by the provenance stage UI.
+
 ## Cloudflare resources
 
 Suggested names:
