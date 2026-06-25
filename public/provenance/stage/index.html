@@ -6,21 +6,25 @@
 <title>LOOPtLOOP Provenance Stage</title>
 <style>
   :root {
-    --bg: #f4efe4;
+    --bg: #f7f1e6;
     --ink: #17130c;
-    --muted: #665d4a;
-    --line: rgba(23, 19, 12, 0.12);
-    --panel: rgba(255, 251, 244, 0.9);
-    --panel-strong: rgba(255, 251, 244, 0.96);
-    --accent: #0e7a6d;
-    --accent-strong: #07453e;
     --warn: #9d4f10;
     --bad: #8f1d2c;
     --greenscreen: #00ff00;
-    --shadow: 0 24px 80px rgba(23, 19, 12, 0.18);
     --toolbar-bg: rgba(17, 18, 19, 0.72);
     --toolbar-border: rgba(255, 255, 255, 0.1);
     --toolbar-ink: #f7f2e7;
+    --overlay-ink: #10110f;
+    --overlay-label: rgba(16, 17, 15, 0.82);
+    --overlay-shadow: 0 0 1px rgba(255, 255, 255, 1), 0 0 7px rgba(255, 255, 255, 0.92);
+    --band-bg: rgba(255, 255, 255, 0.92);
+    --band-border: rgba(0, 0, 0, 0.14);
+    --band-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+    --verify-link-color: #0b4b43;
+    --hover-frame: rgba(16, 17, 15, 0.34);
+    --hover-fill: rgba(255, 255, 255, 0.18);
+    --frame-width-full: min(760px, calc(100vw - 64px));
+    --frame-width-compact: min(520px, calc(100vw - 48px));
   }
   * { box-sizing: border-box; }
   html, body {
@@ -31,16 +35,35 @@
     overflow: hidden;
     color: var(--ink);
     font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
-    background:
-      radial-gradient(circle at top left, rgba(14, 122, 109, 0.18), transparent 34%),
-      radial-gradient(circle at top right, rgba(157, 79, 16, 0.18), transparent 28%),
-      linear-gradient(180deg, #f9f6ef 0%, var(--bg) 100%);
+    background: var(--bg);
   }
   body.stage-mode {
     min-height: 100vh;
   }
   body.greenscreen-mode {
     background: var(--greenscreen);
+  }
+  body.ink-light {
+    --overlay-ink: #fbf7ee;
+    --overlay-label: rgba(251, 247, 238, 0.9);
+    --overlay-shadow: 0 1px 0 rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.46);
+    --band-bg: rgba(14, 15, 14, 0.9);
+    --band-border: rgba(255, 255, 255, 0.16);
+    --band-shadow: 0 14px 28px rgba(0, 0, 0, 0.18);
+    --verify-link-color: #dffff5;
+    --hover-frame: rgba(255, 255, 255, 0.42);
+    --hover-fill: rgba(255, 255, 255, 0.06);
+  }
+  body.ink-dark {
+    --overlay-ink: #10110f;
+    --overlay-label: rgba(16, 17, 15, 0.82);
+    --overlay-shadow: 0 0 1px rgba(255, 255, 255, 1), 0 0 7px rgba(255, 255, 255, 0.92);
+    --band-bg: rgba(255, 255, 255, 0.92);
+    --band-border: rgba(0, 0, 0, 0.14);
+    --band-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+    --verify-link-color: #0b4b43;
+    --hover-frame: rgba(16, 17, 15, 0.34);
+    --hover-fill: rgba(255, 255, 255, 0.18);
   }
   a, button {
     font: inherit;
@@ -50,14 +73,14 @@
     position: fixed;
     top: 16px;
     right: 16px;
-    z-index: 20;
+    z-index: 30;
   }
   .stage-toolbar {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 8px;
-    max-width: min(92vw, 760px);
+    max-width: min(92vw, 920px);
     padding: 10px;
     border-radius: 18px;
     background: var(--toolbar-bg);
@@ -98,80 +121,66 @@
     background: rgba(14, 122, 109, 0.9);
     border-color: transparent;
   }
-  .overlay-shell {
+  .piece {
     position: fixed;
-    top: 32px;
-    left: 32px;
+    left: 0;
+    top: 0;
     z-index: 10;
-    width: min(620px, calc(100vw - 32px));
-    max-width: calc(100vw - 32px);
     user-select: none;
     touch-action: none;
     cursor: grab;
+    color: var(--overlay-ink);
+    text-shadow: var(--overlay-shadow);
+    transition: background 140ms ease, outline-color 140ms ease, opacity 140ms ease;
   }
-  .drag-locked .overlay-shell {
+  .drag-locked .piece {
     cursor: default;
   }
-  .overlay-shell.dragging {
+  .piece.dragging {
     cursor: grabbing;
   }
-  .overlay-shell::after {
-    content: "";
-    position: absolute;
-    inset: auto -10% -35% 38%;
-    height: 220px;
-    background: radial-gradient(circle, rgba(14, 122, 109, 0.24), transparent 70%);
-    pointer-events: none;
-  }
-  body.greenscreen-mode .overlay-shell::after {
-    display: none;
-  }
-  .display-card,
-  .ticker {
-    position: relative;
-    z-index: 1;
-  }
-  .display-card {
-    display: grid;
-    gap: 20px;
-    padding: 24px;
-    background: var(--panel-strong);
-    border: 1px solid var(--line);
-    border-radius: 24px;
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(10px);
-  }
-  .ticker {
-    display: none;
-    width: min(760px, calc(100vw - 32px));
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 14px 18px;
+  .piece--band,
+  .piece--qr {
+    padding: 14px 16px;
     border-radius: 18px;
-    background: rgba(15, 18, 17, 0.92);
-    color: #f8f4ea;
-    box-shadow: var(--shadow);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--band-bg);
+    border: 1px solid var(--band-border);
+    box-shadow: var(--band-shadow);
   }
-  .compact-mode .display-card {
-    display: none;
+  .piece--text {
+    padding: 8px 10px;
+    border-radius: 14px;
+    background: transparent;
   }
-  .compact-mode .ticker {
-    display: flex;
+  .piece--text:hover,
+  .piece--text.dragging,
+  .piece--band:hover,
+  .piece--band.dragging,
+  .piece--qr:hover,
+  .piece--qr.dragging {
+    background: var(--hover-fill);
+    outline: 1px dashed var(--hover-frame);
   }
-  .eyebrow {
-    margin: 0;
-    font-size: 0.82rem;
-    letter-spacing: 0.18em;
+  .watermark-mode .piece {
+    opacity: 0.72;
+    filter: saturate(0.88);
+  }
+  .piece-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.76rem;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--accent-strong);
+    color: var(--overlay-label);
   }
-  h1, h2, h3, p {
+  .piece-title {
     margin: 0;
+    font-size: clamp(1rem, 1.8vw, 1.35rem);
+    font-weight: 700;
   }
   .status-copy {
-    color: var(--muted);
+    margin-top: 8px;
+    max-width: 30rem;
   }
   .status-copy.warn {
     color: var(--warn);
@@ -179,72 +188,144 @@
   .status-copy.bad {
     color: var(--bad);
   }
-  .meta-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-  }
-  .fact {
-    padding: 14px 16px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.76);
-    border: 1px solid var(--line);
-  }
-  .fact span {
-    display: block;
-    font-size: 0.76rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 8px;
-  }
-  .code {
+  .code-value {
+    margin: 0;
     font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
-    font-size: clamp(2.9rem, 9vw, 7rem);
+    font-size: clamp(4.2rem, 10vw, 8rem);
     line-height: 0.9;
     letter-spacing: 0.12em;
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .code-value--vertical {
+    white-space: pre;
+    line-height: 0.82;
+    letter-spacing: 0.04em;
+  }
+  .countdown-value {
+    margin: 0;
+    font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    line-height: 0.95;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .detail-value,
+  .verify-link {
+    margin: 0;
+    font-size: clamp(1rem, 2vw, 1.2rem);
+    line-height: 1.25;
+    font-weight: 700;
+  }
+  .verify-link {
+    color: var(--verify-link-color);
+    word-break: break-word;
+    text-decoration-thickness: 2px;
   }
   .mono {
     font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
   }
-  .verify-link {
-    color: var(--accent-strong);
-    word-break: break-word;
+  .piece--title {
+    width: var(--frame-width-full);
   }
-  .ticker strong,
-  .ticker span {
-    font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
-    letter-spacing: 0.08em;
+  .piece--code {
+    width: var(--frame-width-full);
   }
-  .ticker strong {
-    font-size: clamp(1.2rem, 3vw, 1.7rem);
+  .piece--code-vertical {
+    min-width: 120px;
+    text-align: center;
   }
-  .ticker span {
-    font-size: clamp(0.85rem, 2.4vw, 1.05rem);
+  .piece--countdown {
+    width: 260px;
   }
-  .watermark-mode .display-card,
-  .watermark-mode .ticker {
-    opacity: 0.74;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
-    filter: saturate(0.88);
-    transform: scale(0.96);
-    transform-origin: top left;
+  .piece--detail {
+    min-width: 220px;
+    max-width: min(320px, calc(100vw - 64px));
   }
-  .watermark-mode .display-card {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0.24)),
-      repeating-linear-gradient(
-        -45deg,
-        rgba(255, 255, 255, 0.08) 0 8px,
-        rgba(14, 122, 109, 0.08) 8px 16px
-      );
+  .piece--verify {
+    width: var(--frame-width-full);
   }
-  .watermark-mode .ticker {
-    background: rgba(15, 18, 17, 0.66);
+  .piece--qr {
+    width: 220px;
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+    text-align: center;
   }
-  body.greenscreen-mode .display-card {
-    background: var(--panel-strong);
+  .qr-image {
+    width: 176px;
+    height: 176px;
+    object-fit: contain;
+    display: block;
+    background: #ffffff;
+    border-radius: 10px;
+  }
+  .qr-copy {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.25;
+  }
+  .compact-mode .piece--band,
+  .compact-mode .piece--qr {
+    padding: 10px 12px;
+    border-radius: 14px;
+  }
+  .compact-mode .piece--text {
+    padding: 6px 8px;
+  }
+  .compact-mode .piece-label {
+    font-size: 0.68rem;
+    margin-bottom: 4px;
+  }
+  .compact-mode .piece-title {
+    font-size: clamp(0.88rem, 1.6vw, 1.08rem);
+  }
+  .compact-mode .status-copy {
+    font-size: 0.9rem;
+    max-width: 22rem;
+  }
+  .compact-mode .code-value {
+    font-size: clamp(2.6rem, 6vw, 4.8rem);
+  }
+  .compact-mode .countdown-value {
+    font-size: clamp(1.15rem, 2.3vw, 1.7rem);
+  }
+  .compact-mode .detail-value,
+  .compact-mode .verify-link {
+    font-size: clamp(0.86rem, 1.6vw, 1rem);
+  }
+  .compact-mode .piece--title {
+    width: var(--frame-width-compact);
+  }
+  .compact-mode .piece--code {
+    width: var(--frame-width-compact);
+  }
+  .compact-mode .piece--code-vertical {
+    min-width: 92px;
+  }
+  .compact-mode .piece--countdown {
+    width: 220px;
+  }
+  .compact-mode .piece--detail {
+    min-width: 180px;
+  }
+  .compact-mode .piece--verify {
+    width: var(--frame-width-compact);
+  }
+  .compact-mode .piece--qr {
+    width: 170px;
+  }
+  .compact-mode .piece--countdown,
+  .compact-mode .piece--detail {
+    min-width: unset;
+  }
+  .compact-mode .qr-image {
+    width: 132px;
+    height: 132px;
+  }
+  .compact-mode .qr-copy {
+    font-size: 0.8rem;
   }
   @media (max-width: 780px) {
     .stage-toolbar {
@@ -252,75 +333,78 @@
       right: 16px;
       justify-content: flex-start;
     }
-    .overlay-shell {
-      width: calc(100vw - 24px);
-      max-width: calc(100vw - 24px);
-    }
-    .meta-grid {
-      grid-template-columns: 1fr;
-    }
-    .ticker {
-      width: calc(100vw - 24px);
-      flex-wrap: wrap;
-    }
   }
 </style>
 </head>
-<body class="stage-mode">
+<body class="stage-mode ink-dark">
   <div id="toolbar" class="stage-toolbar" role="toolbar" aria-label="Stage controls">
     <a id="backLink" class="toolbar-link" href="../">Back</a>
     <button id="modeToggle" class="toolbar-button" type="button">Compact</button>
     <button id="greenToggle" class="toolbar-button" type="button" aria-pressed="false">Green</button>
     <button id="watermarkToggle" class="toolbar-button" type="button" aria-pressed="false">Watermark</button>
+    <button id="inkToggle" class="toolbar-button" type="button" aria-pressed="true">White text</button>
     <button id="dragToggle" class="toolbar-button" type="button">Lock drag</button>
-    <button id="resetPosition" class="toolbar-button" type="button">Reset position</button>
+    <button id="resetLayout" class="toolbar-button" type="button">Reset layout</button>
     <button id="hideControls" class="toolbar-button" type="button">Hide controls</button>
   </div>
 
   <button id="showControls" class="toolbar-button controls-reveal" type="button">Show controls</button>
 
-  <section id="overlayShell" class="overlay-shell" aria-live="polite">
-    <div class="display-card">
-      <p class="eyebrow">Live provenance overlay</p>
-      <div class="code" id="codeValue">----</div>
-      <p id="statusText" class="status-copy">Waiting for loop state.</p>
-      <div class="meta-grid">
-        <div class="fact">
-          <span>Loop ID</span>
-          <strong id="loopIdValue">Missing</strong>
-        </div>
-        <div class="fact">
-          <span>Status</span>
-          <strong id="statusValue">pending</strong>
-        </div>
-        <div class="fact">
-          <span>Countdown</span>
-          <strong id="countdownValue">--</strong>
-        </div>
-        <div class="fact">
-          <span>Window start</span>
-          <strong id="windowStartValue">--</strong>
-        </div>
-        <div class="fact">
-          <span>Window end</span>
-          <strong id="windowEndValue">--</strong>
-        </div>
-        <div class="fact">
-          <span>Overlay mode</span>
-          <strong id="modeValue">Full</strong>
-        </div>
-      </div>
-      <div class="fact">
-        <span>Verify URL</span>
-        <a id="verifyLink" class="verify-link mono" href="#" target="_blank" rel="noopener noreferrer">Not available</a>
-      </div>
-    </div>
+  <section id="titlePiece" class="piece piece--band piece--title" data-piece="title">
+    <span class="piece-label">Overlay title</span>
+    <p class="piece-title">Live Provenance Overlay</p>
+    <p id="statusText" class="status-copy">Waiting for loop state.</p>
+  </section>
 
-    <div class="ticker">
-      <strong id="tickerCode">----</strong>
-      <span id="tickerLoop">Loop pending</span>
-      <span id="tickerCountdown">--</span>
-    </div>
+  <section id="codePiece" class="piece piece--text piece--code" data-piece="code" aria-live="polite">
+    <span class="piece-label">Time-base response</span>
+    <p id="codeValue" class="code-value">----</p>
+  </section>
+
+  <section id="codeVerticalPiece" class="piece piece--text piece--code-vertical" data-piece="code_vertical" aria-live="polite">
+    <span class="piece-label">Time-base response (vertical)</span>
+    <p id="codeVerticalValue" class="code-value code-value--vertical">-
+-
+-
+-</p>
+  </section>
+
+  <section id="countdownPiece" class="piece piece--band piece--countdown" data-piece="countdown" aria-live="polite">
+    <span class="piece-label">Window countdown</span>
+    <p id="countdownValue" class="countdown-value">--</p>
+  </section>
+
+  <section id="loopIdPiece" class="piece piece--text piece--detail" data-piece="loop_id">
+    <span class="piece-label">Loop ID</span>
+    <p id="loopIdValue" class="detail-value mono">Missing</p>
+  </section>
+
+  <section id="statusPiece" class="piece piece--text piece--detail" data-piece="status">
+    <span class="piece-label">Status</span>
+    <p id="statusValue" class="detail-value">pending</p>
+  </section>
+
+  <section id="windowStartPiece" class="piece piece--text piece--detail" data-piece="window_start">
+    <span class="piece-label">Window start</span>
+    <p id="windowStartValue" class="detail-value">--</p>
+  </section>
+
+  <section id="windowEndPiece" class="piece piece--text piece--detail" data-piece="window_end">
+    <span class="piece-label">Window end</span>
+    <p id="windowEndValue" class="detail-value">--</p>
+  </section>
+
+  <section id="verifyPiece" class="piece piece--band piece--verify" data-piece="verify">
+    <span class="piece-label">Verification link</span>
+    <a id="verifyLink" class="verify-link mono" href="#" target="_blank" rel="noopener noreferrer">Not available</a>
+  </section>
+
+  <section id="qrPiece" class="piece piece--qr" data-piece="qr">
+    <span class="piece-label">Verification QR</span>
+    <a id="qrLink" href="#" target="_blank" rel="noopener noreferrer">
+      <img id="qrImage" class="qr-image" alt="Verification QR code">
+    </a>
+    <p id="qrCopy" class="qr-copy">QR unavailable until the verification link is ready.</p>
   </section>
 
 <script>
@@ -329,45 +413,51 @@
 
   const DEFAULT_API_BASE = "https://api.looptloop.online/v0";
   const PREFS_STORAGE_KEY = "witnesskey.provenance.stage.prefs";
+  const PIECE_IDS = ["title", "code", "code_vertical", "countdown", "loop_id", "status", "window_start", "window_end", "verify", "qr"];
   const params = new URLSearchParams(window.location.search);
   const els = {
-    toolbar: document.getElementById("toolbar"),
     backLink: document.getElementById("backLink"),
     modeToggle: document.getElementById("modeToggle"),
     greenToggle: document.getElementById("greenToggle"),
     watermarkToggle: document.getElementById("watermarkToggle"),
+    inkToggle: document.getElementById("inkToggle"),
     dragToggle: document.getElementById("dragToggle"),
-    resetPosition: document.getElementById("resetPosition"),
+    resetLayout: document.getElementById("resetLayout"),
     hideControls: document.getElementById("hideControls"),
     showControls: document.getElementById("showControls"),
-    overlayShell: document.getElementById("overlayShell"),
-    codeValue: document.getElementById("codeValue"),
     statusText: document.getElementById("statusText"),
+    codeValue: document.getElementById("codeValue"),
+    codeVerticalValue: document.getElementById("codeVerticalValue"),
+    countdownValue: document.getElementById("countdownValue"),
     loopIdValue: document.getElementById("loopIdValue"),
     statusValue: document.getElementById("statusValue"),
-    countdownValue: document.getElementById("countdownValue"),
     windowStartValue: document.getElementById("windowStartValue"),
     windowEndValue: document.getElementById("windowEndValue"),
-    modeValue: document.getElementById("modeValue"),
     verifyLink: document.getElementById("verifyLink"),
-    tickerCode: document.getElementById("tickerCode"),
-    tickerLoop: document.getElementById("tickerLoop"),
-    tickerCountdown: document.getElementById("tickerCountdown")
+    qrLink: document.getElementById("qrLink"),
+    qrImage: document.getElementById("qrImage"),
+    qrCopy: document.getElementById("qrCopy")
   };
+
+  const pieceElements = {};
+  PIECE_IDS.forEach(function (pieceId) {
+    pieceElements[pieceId] = document.querySelector('[data-piece="' + pieceId + '"]');
+  });
 
   const savedPrefs = readJson(localStorage.getItem(PREFS_STORAGE_KEY));
   const state = {
     loopId: (params.get("loop_id") || "").trim(),
     apiBase: ((params.get("api_base") || DEFAULT_API_BASE).trim().replace(/\/$/, "")) || DEFAULT_API_BASE,
-    mode: readModeParam(params.get("mode")) || readModeParam(savedPrefs.mode) || "full",
+    mode: readMode(params.get("mode")) || readMode(savedPrefs.mode) || "full",
     greenScreen: readBooleanParam("greenscreen", savedPrefs.greenScreen === true),
     watermark: readBooleanParam("watermark", savedPrefs.watermark === true),
+    inkMode: readInkMode(params.get("ink")) || readInkMode(savedPrefs.inkMode) || "dark",
     dragLocked: savedPrefs.dragLocked === true,
     controlsHidden: savedPrefs.controlsHidden === true,
     verifyUrl: null,
     timer: null,
-    position: { x: 32, y: 32 },
-    dragging: null
+    dragging: null,
+    positions: {}
   };
 
   function readJson(rawValue) {
@@ -380,8 +470,12 @@
     }
   }
 
-  function readModeParam(value) {
+  function readMode(value) {
     return value === "compact" ? "compact" : value === "full" ? "full" : "";
+  }
+
+  function readInkMode(value) {
+    return value === "light" ? "light" : value === "dark" ? "dark" : "";
   }
 
   function readBooleanParam(name, fallback) {
@@ -390,8 +484,8 @@
     return rawValue === "1" || rawValue === "true";
   }
 
-  function getPositionStorageKey() {
-    return "witnesskey.provenance.stage.position." + (state.loopId || "global");
+  function getLayoutStorageKey() {
+    return "witnesskey.provenance.stage.layout." + (state.loopId || "global") + "." + state.mode;
   }
 
   function savePrefs() {
@@ -399,13 +493,14 @@
       mode: state.mode,
       greenScreen: state.greenScreen,
       watermark: state.watermark,
+      inkMode: state.inkMode,
       dragLocked: state.dragLocked,
       controlsHidden: state.controlsHidden
     }));
   }
 
-  function savePosition() {
-    localStorage.setItem(getPositionStorageKey(), JSON.stringify(state.position));
+  function saveLayout() {
+    localStorage.setItem(getLayoutStorageKey(), JSON.stringify(state.positions));
   }
 
   function formatTime(value) {
@@ -414,19 +509,42 @@
     return Number.isNaN(date.getTime()) ? value : date.toLocaleTimeString();
   }
 
+  function formatVerticalCode(value) {
+    return String(value || "----").split("").join("\n");
+  }
+
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
   }
 
-  function defaultPosition() {
-    return { x: 32, y: 32 };
+  function buildDefaultPositions() {
+    const full = state.mode === "full";
+    const margin = full ? 32 : 24;
+    const verifyY = Math.max(window.innerHeight - (full ? 150 : 118), full ? 560 : 390);
+    const qrY = Math.max(window.innerHeight - (full ? 250 : 200), full ? 310 : 230);
+
+    return {
+      title: { x: margin, y: margin },
+      code: { x: margin, y: full ? 112 : 86 },
+      code_vertical: { x: full ? 620 : 432, y: full ? 120 : 92 },
+      countdown: { x: full ? 620 : 288, y: full ? 348 : 250 },
+      loop_id: { x: margin, y: full ? 286 : 180 },
+      status: { x: margin, y: full ? 360 : 236 },
+      window_start: { x: margin, y: full ? 434 : 292 },
+      window_end: { x: margin, y: full ? 508 : 348 },
+      verify: { x: margin, y: verifyY },
+      qr: { x: full ? 600 : 560, y: qrY }
+    };
   }
 
-  function applyPosition(position, persist) {
-    const margin = 16;
-    const rect = els.overlayShell.getBoundingClientRect();
-    const width = rect.width || (state.mode === "compact" ? 560 : 620);
-    const height = rect.height || (state.mode === "compact" ? 90 : 420);
+  function applyPiecePosition(pieceId, position, persist) {
+    const element = pieceElements[pieceId];
+    if (!element) return;
+
+    const margin = 12;
+    const rect = element.getBoundingClientRect();
+    const width = rect.width || 240;
+    const height = rect.height || 80;
     const maxX = Math.max(margin, window.innerWidth - width - margin);
     const maxY = Math.max(margin, window.innerHeight - height - margin);
     const nextPosition = {
@@ -434,23 +552,24 @@
       y: clamp(Math.round(position.y), margin, maxY)
     };
 
-    state.position = nextPosition;
-    els.overlayShell.style.left = nextPosition.x + "px";
-    els.overlayShell.style.top = nextPosition.y + "px";
+    state.positions[pieceId] = nextPosition;
+    element.style.left = nextPosition.x + "px";
+    element.style.top = nextPosition.y + "px";
 
     if (persist) {
-      savePosition();
+      saveLayout();
     }
   }
 
-  function restorePosition() {
-    const stored = readJson(localStorage.getItem(getPositionStorageKey()));
-    const nextPosition = {
-      x: typeof stored.x === "number" ? stored.x : defaultPosition().x,
-      y: typeof stored.y === "number" ? stored.y : defaultPosition().y
-    };
-    window.requestAnimationFrame(function () {
-      applyPosition(nextPosition, false);
+  function restoreLayout() {
+    const stored = readJson(localStorage.getItem(getLayoutStorageKey()));
+    const defaults = buildDefaultPositions();
+    PIECE_IDS.forEach(function (pieceId) {
+      const storedPosition = stored[pieceId];
+      const nextPosition = storedPosition && typeof storedPosition.x === "number" && typeof storedPosition.y === "number"
+        ? storedPosition
+        : defaults[pieceId];
+      applyPiecePosition(pieceId, nextPosition, false);
     });
   }
 
@@ -460,6 +579,7 @@
     backUrl.searchParams.set("mode", state.mode);
     backUrl.searchParams.set("green_screen", state.greenScreen ? "1" : "0");
     backUrl.searchParams.set("watermark", state.watermark ? "1" : "0");
+    backUrl.searchParams.set("ink", state.inkMode);
     els.backLink.href = backUrl.toString();
   }
 
@@ -474,6 +594,7 @@
     nextUrl.searchParams.set("mode", state.mode);
     nextUrl.searchParams.set("greenscreen", state.greenScreen ? "1" : "0");
     nextUrl.searchParams.set("watermark", state.watermark ? "1" : "0");
+    nextUrl.searchParams.set("ink", state.inkMode);
     window.history.replaceState({}, "", nextUrl.toString());
   }
 
@@ -482,12 +603,32 @@
     els.statusText.className = "status-copy" + (kind ? " " + kind : "");
   }
 
+  function buildQrUrl(verifyUrl) {
+    return "https://api.qrserver.com/v1/create-qr-code/?size=192x192&margin=0&data=" + encodeURIComponent(verifyUrl);
+  }
+
+  function updateQrCode(verifyUrl) {
+    if (!verifyUrl) {
+      els.qrLink.removeAttribute("href");
+      els.qrImage.removeAttribute("src");
+      els.qrCopy.textContent = "QR unavailable until the verification link is ready.";
+      return;
+    }
+
+    els.qrLink.href = verifyUrl;
+    els.qrImage.src = buildQrUrl(verifyUrl);
+    els.qrImage.alt = "QR code for " + verifyUrl;
+    els.qrImage.referrerPolicy = "no-referrer";
+    els.qrCopy.textContent = "Scan to open the verifier.";
+  }
+
   function syncToolbarButtons() {
     els.modeToggle.textContent = state.mode === "full" ? "Compact" : "Full";
     els.greenToggle.setAttribute("aria-pressed", String(state.greenScreen));
     els.watermarkToggle.setAttribute("aria-pressed", String(state.watermark));
+    els.inkToggle.setAttribute("aria-pressed", String(state.inkMode === "dark"));
+    els.inkToggle.textContent = state.inkMode === "dark" ? "White text" : "Black text";
     els.dragToggle.textContent = state.dragLocked ? "Unlock drag" : "Lock drag";
-    els.modeValue.textContent = state.mode === "compact" ? "Compact" : "Full";
   }
 
   function syncUi() {
@@ -495,13 +636,15 @@
     document.body.classList.toggle("compact-mode", state.mode === "compact");
     document.body.classList.toggle("greenscreen-mode", state.greenScreen);
     document.body.classList.toggle("watermark-mode", state.watermark);
+    document.body.classList.toggle("ink-light", state.inkMode === "light");
+    document.body.classList.toggle("ink-dark", state.inkMode === "dark");
     document.body.classList.toggle("controls-hidden", state.controlsHidden);
     document.body.classList.toggle("drag-locked", state.dragLocked);
     syncToolbarButtons();
     syncBackLink();
     syncQuery();
     savePrefs();
-    restorePosition();
+    restoreLayout();
   }
 
   async function apiRequest(path, options) {
@@ -525,13 +668,14 @@
     const status = (current && current.status) || (metadata && metadata.status) || (state.loopId ? "pending" : "missing");
     const verifyUrl = (current && current.verify_url) || (metadata && metadata.verify_url) || null;
     const countdown = current ? current.seconds_remaining + "s remaining" : status === "expired" ? "Loop expired" : "--";
-    const compactCountdown = current ? current.seconds_remaining + "s" : status;
+    const codeValue = current ? current.current_code : (status === "expired" || status === "closed" ? "ENDED" : "----");
 
     state.verifyUrl = verifyUrl;
-    els.codeValue.textContent = current ? current.current_code : (status === "expired" || status === "closed" ? "ENDED" : "----");
+    els.codeValue.textContent = codeValue;
+    els.codeVerticalValue.textContent = formatVerticalCode(codeValue);
+    els.countdownValue.textContent = countdown;
     els.loopIdValue.textContent = state.loopId || "Missing";
     els.statusValue.textContent = status;
-    els.countdownValue.textContent = countdown;
     els.windowStartValue.textContent = current ? formatTime(current.window_start) : "--";
     els.windowEndValue.textContent = current
       ? formatTime(current.window_end)
@@ -547,9 +691,7 @@
       els.verifyLink.textContent = "Not available";
     }
 
-    els.tickerCode.textContent = current ? current.current_code : (status === "expired" || status === "closed" ? "ENDED" : "----");
-    els.tickerLoop.textContent = state.loopId || "Loop missing";
-    els.tickerCountdown.textContent = compactCountdown;
+    updateQrCode(verifyUrl);
   }
 
   async function fetchLoopMetadata() {
@@ -611,6 +753,11 @@
     syncUi();
   }
 
+  function setInkMode(mode) {
+    state.inkMode = mode;
+    syncUi();
+  }
+
   function setDragLocked(enabled) {
     state.dragLocked = enabled;
     syncUi();
@@ -621,8 +768,10 @@
     syncUi();
   }
 
-  function resetPosition() {
-    applyPosition(defaultPosition(), true);
+  function resetLayout() {
+    localStorage.removeItem(getLayoutStorageKey());
+    state.positions = {};
+    restoreLayout();
   }
 
   function startDrag(event) {
@@ -630,19 +779,23 @@
     if (event.pointerType !== "touch" && event.button !== 0) return;
     if (event.target.closest("a")) return;
 
+    const piece = event.currentTarget.getAttribute("data-piece");
+    if (!piece) return;
+
     state.dragging = {
+      piece: piece,
       pointerId: event.pointerId,
-      offsetX: event.clientX - state.position.x,
-      offsetY: event.clientY - state.position.y
+      offsetX: event.clientX - (state.positions[piece] ? state.positions[piece].x : 0),
+      offsetY: event.clientY - (state.positions[piece] ? state.positions[piece].y : 0)
     };
-    els.overlayShell.classList.add("dragging");
-    els.overlayShell.setPointerCapture(event.pointerId);
+    event.currentTarget.classList.add("dragging");
+    event.currentTarget.setPointerCapture(event.pointerId);
   }
 
   function moveDrag(event) {
     if (!state.dragging || state.dragging.pointerId !== event.pointerId) return;
 
-    applyPosition({
+    applyPiecePosition(state.dragging.piece, {
       x: event.clientX - state.dragging.offsetX,
       y: event.clientY - state.dragging.offsetY
     }, false);
@@ -651,11 +804,16 @@
   function endDrag(event) {
     if (!state.dragging || state.dragging.pointerId !== event.pointerId) return;
 
+    const pieceId = state.dragging.piece;
+    const pieceElement = pieceElements[pieceId];
     state.dragging = null;
-    els.overlayShell.classList.remove("dragging");
-    applyPosition(state.position, true);
-    if (els.overlayShell.hasPointerCapture(event.pointerId)) {
-      els.overlayShell.releasePointerCapture(event.pointerId);
+
+    if (pieceElement) {
+      pieceElement.classList.remove("dragging");
+      applyPiecePosition(pieceId, state.positions[pieceId], true);
+      if (pieceElement.hasPointerCapture(event.pointerId)) {
+        pieceElement.releasePointerCapture(event.pointerId);
+      }
     }
   }
 
@@ -668,22 +826,34 @@
   els.watermarkToggle.addEventListener("click", function () {
     setWatermark(!state.watermark);
   });
+  els.inkToggle.addEventListener("click", function () {
+    setInkMode(state.inkMode === "dark" ? "light" : "dark");
+  });
   els.dragToggle.addEventListener("click", function () {
     setDragLocked(!state.dragLocked);
   });
-  els.resetPosition.addEventListener("click", resetPosition);
+  els.resetLayout.addEventListener("click", resetLayout);
   els.hideControls.addEventListener("click", function () {
     setControlsHidden(true);
   });
   els.showControls.addEventListener("click", function () {
     setControlsHidden(false);
   });
-  els.overlayShell.addEventListener("pointerdown", startDrag);
-  els.overlayShell.addEventListener("pointermove", moveDrag);
-  els.overlayShell.addEventListener("pointerup", endDrag);
-  els.overlayShell.addEventListener("pointercancel", endDrag);
+
+  PIECE_IDS.forEach(function (pieceId) {
+    const pieceElement = pieceElements[pieceId];
+    pieceElement.addEventListener("pointerdown", startDrag);
+    pieceElement.addEventListener("pointermove", moveDrag);
+    pieceElement.addEventListener("pointerup", endDrag);
+    pieceElement.addEventListener("pointercancel", endDrag);
+  });
+
   window.addEventListener("resize", function () {
-    applyPosition(state.position, false);
+    restoreLayout();
+  });
+
+  els.qrImage.addEventListener("error", function () {
+    els.qrCopy.textContent = "QR image could not be loaded.";
   });
 
   syncUi();
