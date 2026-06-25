@@ -253,11 +253,16 @@
     justify-items: center;
     text-align: center;
   }
-  .qr-image {
+  .qr-link,
+  .qr-visual {
+    display: block;
     width: 176px;
     height: 176px;
-    object-fit: contain;
+  }
+  .qr-visual svg {
     display: block;
+    width: 100%;
+    height: 100%;
     background: #ffffff;
     border-radius: 10px;
   }
@@ -320,7 +325,8 @@
   .compact-mode .piece--detail {
     min-width: unset;
   }
-  .compact-mode .qr-image {
+  .compact-mode .qr-link,
+  .compact-mode .qr-visual {
     width: 132px;
     height: 132px;
   }
@@ -401,12 +407,13 @@
 
   <section id="qrPiece" class="piece piece--qr" data-piece="qr">
     <span class="piece-label">Verification QR</span>
-    <a id="qrLink" href="#" target="_blank" rel="noopener noreferrer">
-      <img id="qrImage" class="qr-image" alt="Verification QR code">
+    <a id="qrLink" class="qr-link" href="#" target="_blank" rel="noopener noreferrer">
+      <span id="qrVisual" class="qr-visual" aria-hidden="true"></span>
     </a>
     <p id="qrCopy" class="qr-copy">QR unavailable until the verification link is ready.</p>
   </section>
 
+<script src="./vendor/qrcode.js"></script>
 <script>
 (function () {
   "use strict";
@@ -435,7 +442,7 @@
     windowEndValue: document.getElementById("windowEndValue"),
     verifyLink: document.getElementById("verifyLink"),
     qrLink: document.getElementById("qrLink"),
-    qrImage: document.getElementById("qrImage"),
+    qrVisual: document.getElementById("qrVisual"),
     qrCopy: document.getElementById("qrCopy")
   };
 
@@ -603,23 +610,33 @@
     els.statusText.className = "status-copy" + (kind ? " " + kind : "");
   }
 
-  function buildQrUrl(verifyUrl) {
-    return "https://api.qrserver.com/v1/create-qr-code/?size=192x192&margin=0&data=" + encodeURIComponent(verifyUrl);
-  }
-
   function updateQrCode(verifyUrl) {
     if (!verifyUrl) {
       els.qrLink.removeAttribute("href");
-      els.qrImage.removeAttribute("src");
+      els.qrVisual.innerHTML = "";
       els.qrCopy.textContent = "QR unavailable until the verification link is ready.";
       return;
     }
 
-    els.qrLink.href = verifyUrl;
-    els.qrImage.src = buildQrUrl(verifyUrl);
-    els.qrImage.alt = "QR code for " + verifyUrl;
-    els.qrImage.referrerPolicy = "no-referrer";
-    els.qrCopy.textContent = "Scan to open the verifier.";
+    try {
+      const qr = qrcode(0, "M");
+      qr.addData(verifyUrl, "Byte");
+      qr.make();
+
+      els.qrLink.href = verifyUrl;
+      els.qrVisual.innerHTML = qr.createSvgTag({
+        cellSize: 4,
+        margin: 0,
+        scalable: true,
+        alt: "Verification QR code",
+        title: "Verification QR code"
+      });
+      els.qrCopy.textContent = "Scan to open the verifier.";
+    } catch (error) {
+      els.qrLink.removeAttribute("href");
+      els.qrVisual.innerHTML = "";
+      els.qrCopy.textContent = "QR could not be generated locally.";
+    }
   }
 
   function syncToolbarButtons() {
@@ -850,10 +867,6 @@
 
   window.addEventListener("resize", function () {
     restoreLayout();
-  });
-
-  els.qrImage.addEventListener("error", function () {
-    els.qrCopy.textContent = "QR image could not be loaded.";
   });
 
   syncUi();
