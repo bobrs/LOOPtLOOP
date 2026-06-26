@@ -174,20 +174,25 @@
     text-transform: uppercase;
     color: var(--overlay-label);
   }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
   .piece-title {
     margin: 0;
-    font-size: clamp(1rem, 1.8vw, 1.35rem);
+    font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+    font-size: clamp(0.82rem, 1.2vw, 0.98rem);
     font-weight: 700;
-  }
-  .status-copy {
-    margin-top: 8px;
-    max-width: 30rem;
-  }
-  .status-copy.warn {
-    color: var(--warn);
-  }
-  .status-copy.bad {
-    color: var(--bad);
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
   }
   .code-value {
     margin: 0;
@@ -197,6 +202,7 @@
     letter-spacing: 0.12em;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
   .code-value--vertical {
     white-space: pre;
@@ -229,6 +235,7 @@
   }
   .piece--title {
     width: var(--frame-width-full);
+    padding-block: 10px;
   }
   .piece--code {
     width: var(--frame-width-full);
@@ -285,11 +292,7 @@
     margin-bottom: 4px;
   }
   .compact-mode .piece-title {
-    font-size: clamp(0.88rem, 1.6vw, 1.08rem);
-  }
-  .compact-mode .status-copy {
-    font-size: 0.9rem;
-    max-width: 22rem;
+    font-size: clamp(0.7rem, 1.25vw, 0.84rem);
   }
   .compact-mode .code-value {
     font-size: clamp(2.6rem, 6vw, 4.8rem);
@@ -303,6 +306,7 @@
   }
   .compact-mode .piece--title {
     width: var(--frame-width-compact);
+    padding-block: 8px;
   }
   .compact-mode .piece--code {
     width: var(--frame-width-compact);
@@ -358,9 +362,8 @@
   <button id="showControls" class="toolbar-button controls-reveal" type="button">Show controls</button>
 
   <section id="titlePiece" class="piece piece--band piece--title" data-piece="title">
-    <span class="piece-label">Overlay title</span>
-    <p class="piece-title">Live Provenance Overlay</p>
-    <p id="statusText" class="status-copy">Waiting for loop state.</p>
+    <p class="piece-title">Live Provenance Overlay | https://WitnessKey.online/provenance</p>
+    <span id="statusText" class="sr-only" aria-live="polite">Waiting for loop state.</span>
   </section>
 
   <section id="codePiece" class="piece piece--text piece--code" data-piece="code" aria-live="polite">
@@ -608,7 +611,23 @@
 
   function setStatus(message, kind) {
     els.statusText.textContent = message;
-    els.statusText.className = "status-copy" + (kind ? " " + kind : "");
+    els.statusText.dataset.kind = kind || "";
+  }
+
+  function fitHorizontalCode() {
+    const codePiece = pieceElements.code;
+    if (!codePiece) return;
+
+    const maxFontSize = state.mode === "full" ? 128 : 77;
+    const minFontSize = state.mode === "full" ? 42 : 30;
+    const availableWidth = Math.max(codePiece.clientWidth - 16, 160);
+    let nextFontSize = maxFontSize;
+
+    els.codeValue.style.fontSize = nextFontSize + "px";
+    while (nextFontSize > minFontSize && els.codeValue.scrollWidth > availableWidth) {
+      nextFontSize -= 2;
+      els.codeValue.style.fontSize = nextFontSize + "px";
+    }
   }
 
   function updateQrCode(verifyUrl) {
@@ -663,6 +682,7 @@
     syncQuery();
     savePrefs();
     restoreLayout();
+    window.requestAnimationFrame(fitHorizontalCode);
   }
 
   async function apiRequest(path, options) {
@@ -710,6 +730,7 @@
     }
 
     updateQrCode(verifyUrl);
+    window.requestAnimationFrame(fitHorizontalCode);
   }
 
   async function fetchLoopMetadata() {
@@ -868,6 +889,7 @@
 
   window.addEventListener("resize", function () {
     restoreLayout();
+    window.requestAnimationFrame(fitHorizontalCode);
   });
 
   syncUi();
