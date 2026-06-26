@@ -585,6 +585,33 @@
     layoutPanelOpen: false
   };
 
+  const DEFAULT_LAYOUTS = {
+    full: {
+      title: { x: 150, y: 261 },
+      code: { x: 146, y: 1153 },
+      code_vertical: { x: 1343, y: 351 },
+      countdown: { x: 1053, y: 255 },
+      loop_id: { x: 154, y: 366 },
+      status: { x: 413, y: 370 },
+      window_start: { x: 158, y: 444 },
+      window_end: { x: 158, y: 515 },
+      verify: { x: 137, y: 1302 },
+      qr: { x: 1144, y: 1025 }
+    },
+    compact: {
+      title: { x: 24, y: 24 },
+      code: { x: 24, y: 86 },
+      code_vertical: { x: 899, y: 105 },
+      countdown: { x: 524, y: 554 },
+      loop_id: { x: 24, y: 180 },
+      status: { x: 24, y: 236 },
+      window_start: { x: 24, y: 292 },
+      window_end: { x: 24, y: 348 },
+      verify: { x: 15, y: 760 },
+      qr: { x: 560, y: 1359 }
+    }
+  };
+
   function readJson(rawValue) {
     if (!rawValue) return {};
     try {
@@ -703,23 +730,7 @@
   }
 
   function buildDefaultPositions() {
-    const full = state.mode === "full";
-    const margin = full ? 32 : 24;
-    const verifyY = Math.max(window.innerHeight - (full ? 150 : 118), full ? 560 : 390);
-    const qrY = Math.max(window.innerHeight - (full ? 250 : 200), full ? 310 : 230);
-
-    return {
-      title: { x: margin, y: margin },
-      code: { x: margin, y: full ? 112 : 86 },
-      code_vertical: { x: full ? 620 : 432, y: full ? 120 : 92 },
-      countdown: { x: full ? 620 : 288, y: full ? 348 : 250 },
-      loop_id: { x: margin, y: full ? 286 : 180 },
-      status: { x: margin, y: full ? 360 : 236 },
-      window_start: { x: margin, y: full ? 434 : 292 },
-      window_end: { x: margin, y: full ? 508 : 348 },
-      verify: { x: margin, y: verifyY },
-      qr: { x: full ? 600 : 560, y: qrY }
-    };
+    return sanitizeLayoutPositions(DEFAULT_LAYOUTS[state.mode]);
   }
 
   function applyPiecePosition(pieceId, position, persist) {
