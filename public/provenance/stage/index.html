@@ -26,8 +26,10 @@
     --hover-fill: rgba(255, 255, 255, 0.18);
     --frame-width-full: min(760px, calc(100vw - 64px));
     --frame-width-compact: min(520px, calc(100vw - 48px));
-    --title-width-full: min(988px, calc(100vw - 64px));
-    --title-width-compact: min(676px, calc(100vw - 48px));
+    --title-width-full: min(1482px, calc(100vw - 64px));
+    --title-width-compact: min(1014px, calc(100vw - 48px));
+    --title-height-full: 86px;
+    --title-height-compact: 68px;
     --countdown-width-full: 344px;
     --countdown-width-compact: 272px;
   }
@@ -192,7 +194,7 @@
   .piece-title {
     margin: 0;
     font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
-    font-size: clamp(1rem, 1.45vw, 1.18rem);
+    font-size: clamp(1.18rem, 1.9vw, 1.5rem);
     font-weight: 700;
     line-height: 1.18;
     letter-spacing: 0.02em;
@@ -232,7 +234,8 @@
   }
   .verify-link {
     color: var(--verify-link-color);
-    word-break: break-word;
+    white-space: nowrap;
+    overflow: hidden;
     text-decoration-thickness: 2px;
   }
   .mono {
@@ -240,7 +243,10 @@
   }
   .piece--title {
     width: var(--title-width-full);
-    padding-block: 14px;
+    min-height: var(--title-height-full);
+    padding-block: 16px;
+    display: flex;
+    align-items: center;
   }
   .piece--code {
     width: var(--frame-width-full);
@@ -267,7 +273,15 @@
     max-width: min(320px, calc(100vw - 64px));
   }
   .piece--verify {
-    width: var(--frame-width-full);
+    width: var(--title-width-full);
+    min-height: var(--title-height-full);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+  }
+  .piece--verify .piece-label {
+    margin-bottom: 0;
   }
   .piece--qr {
     width: 220px;
@@ -307,7 +321,7 @@
     margin-bottom: 4px;
   }
   .compact-mode .piece-title {
-    font-size: clamp(0.86rem, 1.35vw, 1rem);
+    font-size: clamp(1rem, 1.55vw, 1.18rem);
   }
   .compact-mode .code-value {
     font-size: clamp(2.6rem, 6vw, 4.8rem);
@@ -321,7 +335,8 @@
   }
   .compact-mode .piece--title {
     width: var(--title-width-compact);
-    padding-block: 10px;
+    min-height: var(--title-height-compact);
+    padding-block: 12px;
   }
   .compact-mode .piece--code {
     width: var(--frame-width-compact);
@@ -336,7 +351,8 @@
     min-width: 180px;
   }
   .compact-mode .piece--verify {
-    width: var(--frame-width-compact);
+    width: var(--title-width-compact);
+    min-height: var(--title-height-compact);
   }
   .compact-mode .piece--qr {
     width: 170px;
@@ -648,6 +664,25 @@
     }
   }
 
+  function fitTitleText() {
+    const titlePiece = pieceElements.title;
+    if (!titlePiece) return;
+
+    const titleElement = titlePiece.querySelector(".piece-title");
+    if (!titleElement) return;
+
+    const maxFontSize = state.mode === "full" ? 24 : 19;
+    const minFontSize = state.mode === "full" ? 14 : 12;
+    const availableWidth = Math.max(titlePiece.clientWidth - 32, 220);
+    let nextFontSize = maxFontSize;
+
+    titleElement.style.fontSize = nextFontSize + "px";
+    while (nextFontSize > minFontSize && titleElement.scrollWidth > availableWidth) {
+      nextFontSize -= 1;
+      titleElement.style.fontSize = nextFontSize + "px";
+    }
+  }
+
   function fitCountdownValue() {
     const countdownPiece = pieceElements.countdown;
     if (!countdownPiece) return;
@@ -664,9 +699,27 @@
     }
   }
 
+  function fitVerifyLink() {
+    const verifyPiece = pieceElements.verify;
+    if (!verifyPiece) return;
+
+    const maxFontSize = state.mode === "full" ? 24 : 18;
+    const minFontSize = state.mode === "full" ? 11 : 10;
+    const availableWidth = Math.max(verifyPiece.clientWidth - 32, 220);
+    let nextFontSize = maxFontSize;
+
+    els.verifyLink.style.fontSize = nextFontSize + "px";
+    while (nextFontSize > minFontSize && els.verifyLink.scrollWidth > availableWidth) {
+      nextFontSize -= 1;
+      els.verifyLink.style.fontSize = nextFontSize + "px";
+    }
+  }
+
   function fitOverlayText() {
+    fitTitleText();
     fitHorizontalCode();
     fitCountdownValue();
+    fitVerifyLink();
   }
 
   function updateQrCode(verifyUrl) {
