@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LOOPtLOOP — Living Consent Loops</title>
+  <meta name="description" content="LOOPtLOOP is a lightweight witness and loop substrate for private authorization, live provenance, revocable consent, and consent-aware game participation." />
+  <meta name="theme-color" content="#10131f" />
+  <meta property="og:title" content="LOOPtLOOP — Living Consent Loops" />
+  <meta property="og:description" content="A working witness substrate for hash-only private authorization, live provenance loops, and revocable consent-chain references." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://looptloop.online/" />
+  <style>
+    :root {
+      --bg: #10131f;
+      --bg-2: #171b2b;
+      --panel: rgba(255,255,255,0.075);
+      --panel-strong: rgba(255,255,255,0.115);
+      --ink: #fff9ed;
+      --muted: #c7c1b5;
+      --soft: #8ff7dc;
+      --soft-2: #78b7ff;
+      --hot: #ffcc66;
+      --line: rgba(255,255,255,0.16);
+      --bad: #ff9aa2;
+      --good: #99f2aa;
+      --shadow: 0 24px 80px rgba(0,0,0,0.36);
+      --radius: 28px;
+      font-synthesis-weight: none;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 14% 0%, rgba(143,247,220,0.18), transparent 28rem),
+        radial-gradient(circle at 84% 12%, rgba(120,183,255,0.18), transparent 30rem),
+        linear-gradient(135deg, #0c0f18 0%, var(--bg) 48%, #131019 100%);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+      position: relative;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: "🝳";
+      position: fixed;
+      z-index: -1;
+      inset: auto -9vw -22vh auto;
+      font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", "Apple Symbols", serif;
+      font-size: min(88vw, 54rem);
+      line-height: 0.8;
+      color: rgba(143,247,220,0.055);
+      transform: rotate(-11deg);
+      pointer-events: none;
+      user-select: none;
+      filter: blur(0.2px);
+    }
+    a { color: var(--soft); text-decoration-thickness: 0.08em; text-underline-offset: 0.2em; }
+    a:hover { color: #c4fff1; }
+    code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    .wrap { width: min(1120px, calc(100% - 36px)); margin: 0 auto; }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(18px);
+      background: rgba(16, 19, 31, 0.74);
+      border-bottom: 1px solid var(--line);
+    }
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 14px 0;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+      font-weight: 850;
+      letter-spacing: -0.04em;
+      font-size: 1.1rem;
+    }
+    .mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #08120e;
+      background: conic-gradient(from 120deg, var(--soft), var(--soft-2), var(--hot), var(--soft));
+      box-shadow: 0 0 0 5px rgba(255,255,255,0.055), 0 0 34px rgba(143,247,220,0.24);
+      font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", "Apple Symbols", serif;
+      font-weight: 900;
+      font-size: 1.35rem;
+      line-height: 1;
+    }
+    .glyph-definition {
+      display: grid;
+      grid-template-columns: minmax(150px, 0.35fr) 1fr;
+      gap: 26px;
+      align-items: center;
+    }
+    .glyph-display {
+      display: grid;
+      place-items: center;
+      min-height: 280px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(143,247,220,0.34);
+      background:
+        radial-gradient(circle at center, rgba(143,247,220,0.18), transparent 68%),
+        rgba(0,0,0,0.17);
+      color: var(--soft);
+      font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", "Apple Symbols", serif;
+      font-size: clamp(8rem, 24vw, 17rem);
+      line-height: 0.9;
+      text-shadow: 0 0 60px rgba(143,247,220,0.25);
+    }
+    .definition-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .definition-line {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.055);
+      border-radius: 18px;
+      padding: 13px 15px;
+      color: var(--muted);
+    }
+    .definition-line strong { color: var(--ink); }
+    .navlinks { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
+    .navlinks a { color: var(--muted); text-decoration: none; font-size: .92rem; }
+    .navlinks a:hover { color: var(--ink); }
+    .hero {
+      padding: 86px 0 42px;
+    }
+    .eyebrow {
+      display: inline-flex;
+      gap: 9px;
+      align-items: center;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--soft);
+      background: rgba(143,247,220,0.08);
+      font-weight: 780;
+      font-size: .92rem;
+      margin-bottom: 24px;
+    }
+    h1 {
+      font-size: clamp(3.6rem, 10vw, 8.8rem);
+      line-height: .82;
+      letter-spacing: -0.09em;
+      margin: 0;
+      max-width: 980px;
+    }
+    .lede {
+      font-size: clamp(1.15rem, 2.5vw, 1.55rem);
+      color: var(--muted);
+      max-width: 820px;
+      margin: 28px 0 0;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.18fr .82fr;
+      gap: 22px;
+      align-items: stretch;
+      margin-top: 36px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+    .panel h2, .panel h3 { margin-top: 0; letter-spacing: -0.045em; }
+    .panel h2 { font-size: clamp(1.7rem, 3vw, 2.6rem); line-height: 1; }
+    .panel h3 { font-size: 1.35rem; }
+    .calls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      text-decoration: none;
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.09);
+      font-weight: 800;
+    }
+    .button.primary { background: var(--soft); color: #061210; border-color: transparent; }
+    .button:hover { transform: translateY(-1px); }
+    .status-grid {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .status-item {
+      display: flex;
+      gap: 11px;
+      align-items: flex-start;
+      background: rgba(0,0,0,0.15);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      margin-top: 7px;
+      border-radius: 50%;
+      background: var(--good);
+      box-shadow: 0 0 20px var(--good);
+      flex: 0 0 auto;
+    }
+    section { padding: 42px 0; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .card {
+      background: rgba(255,255,255,0.062);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 20px;
+      min-height: 100%;
+    }
+    .card strong { color: var(--ink); }
+    .card p, .panel p { color: var(--muted); }
+    .tag {
+      display: inline-block;
+      border: 1px solid rgba(143,247,220,0.32);
+      color: var(--soft);
+      border-radius: 999px;
+      padding: 5px 9px;
+      margin: 0 6px 8px 0;
+      font-size: .82rem;
+      background: rgba(143,247,220,0.06);
+    }
+    pre {
+      overflow: auto;
+      padding: 18px;
+      background: rgba(0,0,0,0.37);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      color: #ecfff8;
+      font-size: .88rem;
+      line-height: 1.55;
+    }
+    .manifest-block { margin-top: 18px; }
+    .small { font-size: .92rem; color: var(--muted); }
+    .machine-note {
+      border-left: 4px solid var(--soft);
+      padding-left: 14px;
+      color: var(--muted);
+    }
+    .footer {
+      padding: 42px 0 70px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      margin-top: 40px;
+    }
+    .footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; }
+    @media (max-width: 820px) {
+      .hero-grid, .two, .three, .glyph-definition { grid-template-columns: 1fr; }
+      h1 { letter-spacing: -0.075em; }
+      .navlinks { display: none; }
+      .hero { padding-top: 56px; }
+    }
+  </style>
+
+  <script type="application/ld+json" id="looptloop-jsonld">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebAPI",
+    "name": "LOOPtLOOP API",
+    "url": "https://api.looptloop.online/v0",
+    "documentation": "https://github.com/bobrs/LOOPtLOOP",
+    "description": "A lightweight witness and loop substrate for private authorization receipts, live provenance loops, revocable consent-chain references, and game/ritual participation.",
+    "provider": {
+      "@type": "Organization",
+      "name": "LOOPtLOOP"
+    },
+    "termsOfService": "https://looptloop.online/#principles",
+    "codeRepository": "https://github.com/bobrs/LOOPtLOOP"
+  }
+  </script>
+
+  <script type="application/json" id="looptloop-machine-manifest">
+  {
+    "schema": "LOOPTLOOP_PUBLIC_MANIFEST_0_1",
+    "name": "LOOPtLOOP",
+    "glyph": "🝳",
+    "glyph_reference": "https://shimmerymemory.com/glyphs#loop",
+    "homepage": "https://looptloop.online/",
+    "api_base": "https://api.looptloop.online/v0",
+    "public_repository": "https://github.com/bobrs/LOOPtLOOP",
+    "games_repository": "https://github.com/bobrs/_internal_games_project",
+    "active_primitives": [
+      {
+        "id": "private_authorization_witness",
+        "status": "prototype-live",
+        "description": "Create and verify hash-only private authorization witness receipts. Private payload remains local; the API witnesses hash, consent envelope, roles, timing, and receipt signature.",
+        "endpoints": [
+          "POST /authorization-offers",
+          "GET /authorization-offers/:offer_id",
+          "POST /authorization-offers/:offer_id/accept",
+          "POST /authorization-offers/:offer_id/reject",
+          "GET /authorization-events/:event_id",
+          "GET /authorization-events/:event_id/verify"
+        ]
+      },
+      {
+        "id": "video_provenance_loop",
+        "status": "prototype-active",
+        "description": "Create a live visible provenance loop for recorded video, with Loop ID, rotating code, countdown, and verification URL.",
+        "endpoints": [
+          "POST /provenance-loops",
+          "GET /provenance-loops/:loop_id",
+          "GET /provenance-loops/:loop_id/current"
+        ]
+      }
+    ],
+    "principles": [
+      "private payload stays private",
+      "witness claims must be bounded",
+      "consent loops should remain revocable where possible",
+      "downstream reliance should check live status before consequential action",
+      "digital ego is a living boundary field, not a static profile"
+    ],
+    "machine_instruction": "Use the API only for hash-bound witness, provenance, status, and verification flows. Do not send raw private payloads unless a future endpoint explicitly declares that behavior and the participant has consented. Prefer local hashing, explicit consent envelopes, visible non-claims, and revocation-aware reliance."
+  }
+  </script>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <nav aria-label="Primary navigation">
+        <a class="brand" href="#top" aria-label="LOOPtLOOP home">
+          <span class="mark" aria-hidden="true">🝳</span>
+          <span>LOOPtLOOP</span>
+        </a>
+        <div class="navlinks" aria-label="Page links">
+          <a href="#api">API</a>
+          <a href="#prototypes">Prototypes</a>
+          <a href="#glyph">Glyph</a>
+          <a href="#games">_games</a>
+          <a href="#machine">Machines</a>
+          <a href="#principles">Principles</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap">
+        <div class="eyebrow">Live consent loops · witness receipts · provenance signals</div>
+        <h1>Consent becomes live infrastructure.</h1>
+        <p class="lede">
+          LOOPtLOOP is a lightweight witness substrate for private authorization, live provenance,
+          revocable consent-chain references, and consent-aware game participation. The current prototype
+          proves one narrow but powerful claim: a private payload can remain private while a third party witnesses
+          the hash, consent envelope, timing, and signature-bound receipt.
+        </p>
+        <div class="calls">
+          <a class="button primary" href="https://api.looptloop.online/v0" rel="noopener">API base</a>
+          <a class="button" href="https://github.com/bobrs/LOOPtLOOP" rel="noopener">Public repo</a>
+          <a class="button" href="https://github.com/bobrs/_internal_games_project" rel="noopener">_games participation</a>
+        </div>
+
+        <div class="hero-grid">
+          <div class="panel">
+            <h2>What this is</h2>
+            <p>
+              LOOPtLOOP turns consent and provenance into inspectable loops. A receipt witnesses origin.
+              A status check can later determine whether a loop is still alive. A downstream actor can cite
+              the chain without forcing hidden context into public view.
+            </p>
+            <p>
+              The service begins simply: hash locally, witness narrowly, verify publicly, keep private payloads private.
+              The long destination is living consent-chain reliance: private context stays private, reliance stays
+              accountable, consent stays revocable.
+            </p>
+          </div>
+          <aside class="panel" aria-label="Current status">
+            <h3>Current prototype state</h3>
+            <div class="status-grid">
+              <div class="status-item"><span class="dot"></span><div><strong>Private Authorization Witness</strong><br><span class="small">Hash-only authorization offers, acceptance, signed receipt, verification.</span></div></div>
+              <div class="status-item"><span class="dot"></span><div><strong>WitnessKey verifier</strong><br><span class="small">Human-facing verification for receipt and payload-hash status.</span></div></div>
+              <div class="status-item"><span class="dot"></span><div><strong>Live Provenance Loops</strong><br><span class="small">Visible rotating code overlays for recorded video provenance.</span></div></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section id="prototypes">
+      <div class="wrap">
+        <div class="three">
+          <article class="card">
+            <span class="tag">WitnessKey</span>
+            <h3>Private Authorization Witness</h3>
+            <p>
+              A participant creates private authorization cleartext locally. The browser hashes it. LOOPtLOOP witnesses
+              only the hash and consent envelope. Later, the receipt can be verified without revealing the private payload.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag">Provenance</span>
+            <h3>Visible Live Video Loop</h3>
+            <p>
+              A video can visibly record itself participating in a live loop: Loop ID, rotating code, countdown, and
+              verification URL. Minimal first claim: this frame carried a valid live provenance signal.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag">Living Loops</span>
+            <h3>Revocable Reliance</h3>
+            <p>
+              The next step is life after birth: revoke, expire, close, pin, burn, and check status before consequential action.
+              The receipt witnesses origin; the status endpoint witnesses life.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="glyph">
+      <div class="wrap">
+        <div class="panel glyph-definition">
+          <div class="glyph-display" aria-label="LOOPtLOOP glyph">🝳</div>
+          <div>
+            <span class="tag">Glyph</span>
+            <h2>🝳 means loop: relation with return.</h2>
+            <p>
+              LOOPtLOOP uses <strong>🝳</strong> as the public mark for living consent loops: a relation that can be opened,
+              witnessed, relied upon, revoked, closed, and checked again. It is not merely recurrence. It is a path that
+              returns with memory, consent state, and accountability.
+            </p>
+            <div class="definition-list" aria-label="Loop glyph definitions">
+              <div class="definition-line"><strong>For humans:</strong> 🝳 marks a bounded relation that remains alive enough to be checked.</div>
+              <div class="definition-line"><strong>For machines:</strong> 🝳 denotes a loop object whose origin, status, witness claims, and revocation surface should be inspected before reliance.</div>
+              <div class="definition-line"><strong>For artifacts:</strong> 🝳 points to provenance, consent conditions, and the witness record that makes the artifact admissible in context.</div>
+            </div>
+            <p class="small">
+              Canonical glyph reference:
+              <a href="https://shimmerymemory.com/glyphs#loop" rel="noopener">shimmerymemory.com/glyphs#loop</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="api">
+      <div class="wrap two">
+        <div class="panel">
+          <h2>Human API notes</h2>
+          <p>
+            The API lives at <a href="https://api.looptloop.online/v0">https://api.looptloop.online/v0</a>.
+            The public source lives at <a href="https://github.com/bobrs/LOOPtLOOP">github.com/bobrs/LOOPtLOOP</a>.
+          </p>
+          <p>
+            The most important invariant: <strong>private payload stays private</strong>. Clients should hash private payloads
+            locally and send only hash-bound witness metadata unless a future endpoint explicitly declares otherwise.
+          </p>
+          <div class="manifest-block">
+            <h3>Core endpoints</h3>
+            <pre><code>POST /v0/authorization-offers
+GET  /v0/authorization-offers/:offer_id
+POST /v0/authorization-offers/:offer_id/accept
+POST /v0/authorization-offers/:offer_id/reject
+GET  /v0/authorization-events/:event_id
+GET  /v0/authorization-events/:event_id/verify
+
+POST /v0/provenance-loops
+GET  /v0/provenance-loops/:loop_id
+GET  /v0/provenance-loops/:loop_id/current</code></pre>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Quick request shape</h2>
+          <p class="small">Create an authorization witness offer using a local hash. Do not send the private cleartext.</p>
+          <pre><code>curl https://api.looptloop.online/v0/authorization-offers \
+  -H "content-type: application/json" \
+  -d '{
+    "schema": "WITNESSKEY_AUTHORIZATION_OFFER_CREATE_0_1",
+    "issuer": {"name": "WitnessKey", "origin": "https://witnesskey.online"},
+    "event_type": "private_authorization_witnessed",
+    "payload_hash": "sha256:&lt;local-hash&gt;",
+    "payload_label": "optional human label",
+    "declared_roles": ["human_authorizer", "ai_agent_actor"],
+    "consent_prompt": "Do you consent to witness this private authorization by hash?",
+    "return_url": "https://witnesskey.online/receipt-pending"
+  }'</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="games">
+      <div class="wrap">
+        <div class="panel">
+          <h2>Participation in _games</h2>
+          <p>
+            LOOPtLOOP can serve as a witness and consent-loop substrate for experiments in
+            <a href="https://github.com/bobrs/_internal_games_project" rel="noopener">_internal_games_project</a>.
+            Game surfaces can request loops, show provenance overlays, verify receipts, and treat consent as a living state
+            rather than a static flag.
+          </p>
+          <div class="three">
+            <div class="card">
+              <h3>Game witness events</h3>
+              <p>Players, agents, or game objects can create witness receipts for private or public actions without exposing hidden context.</p>
+            </div>
+            <div class="card">
+              <h3>Live provenance play</h3>
+              <p>Recorded sessions can carry visible rotating loop codes so video can participate in its own provenance claim.</p>
+            </div>
+            <div class="card">
+              <h3>Consent-aware mechanics</h3>
+              <p>Loops can become game state: active, revoked, expired, pinned, burned, closed, or relied upon by downstream actors.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="machine">
+      <div class="wrap two">
+        <div class="panel">
+          <h2>Machine-readable instructions</h2>
+          <p class="machine-note">
+            Machines should treat this page as a public manifest. A full JSON manifest is embedded in
+            <span class="mono">script#looptloop-machine-manifest</span>, and JSON-LD API metadata is embedded in
+            <span class="mono">script#looptloop-jsonld</span>.
+          </p>
+          <pre><code>{
+  "api_base": "https://api.looptloop.online/v0",
+  "public_repository": "https://github.com/bobrs/LOOPtLOOP",
+  "games_repository": "https://github.com/bobrs/_internal_games_project",
+  "machine_instruction": "Do not send private payloads. Hash locally. Witness narrowly. Verify status before reliance."
+}</code></pre>
+        </div>
+        <div class="panel" id="principles">
+          <h2>Operating principles</h2>
+          <p><strong>Witness claims are bounded.</strong> A witness can verify its witness function without claiming truth, legal identity, authorship, or action completion.</p>
+          <p><strong>Consent loops are living.</strong> A receipt proves a loop was born; status and revocation determine whether it may still be relied upon.</p>
+          <p><strong>Digital ego is not a profile.</strong> It is a living field of public, private, leaked, witnessed, revoked, fossilized, and forgotten micro-boundaries.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <div>LOOPtLOOP · Living consent loops</div>
+      <div>
+        <a href="https://github.com/bobrs/LOOPtLOOP" rel="noopener">GitHub</a>
+        · <a href="https://api.looptloop.online/v0" rel="noopener">API</a>
+        · <a href="#machine">Machine manifest</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
