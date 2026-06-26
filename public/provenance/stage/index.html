@@ -128,6 +128,61 @@
     background: rgba(14, 122, 109, 0.9);
     border-color: transparent;
   }
+  .layout-panel {
+    position: fixed;
+    top: 84px;
+    right: 16px;
+    z-index: 30;
+    width: min(92vw, 560px);
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 18px;
+    background: var(--toolbar-bg);
+    border: 1px solid var(--toolbar-border);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(14px);
+    color: var(--toolbar-ink);
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+  .layout-panel[hidden] {
+    display: none;
+  }
+  .controls-hidden .layout-panel {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-8px);
+  }
+  .layout-panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .layout-panel-title {
+    font-size: 0.96rem;
+    font-weight: 700;
+  }
+  .layout-panel-note {
+    font-size: 0.8rem;
+    color: rgba(247, 242, 231, 0.76);
+  }
+  .layout-output {
+    width: 100%;
+    min-height: 232px;
+    resize: vertical;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.26);
+    color: var(--toolbar-ink);
+    font: 0.84rem/1.45 "SFMono-Regular", "Menlo", "Consolas", monospace;
+  }
+  .layout-panel-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
   .piece {
     position: fixed;
     left: 0;
@@ -378,6 +433,11 @@
       right: 16px;
       justify-content: flex-start;
     }
+    .layout-panel {
+      left: 16px;
+      right: 16px;
+      width: auto;
+    }
   }
 </style>
 </head>
@@ -389,11 +449,24 @@
     <button id="watermarkToggle" class="toolbar-button" type="button" aria-pressed="false">Watermark</button>
     <button id="inkToggle" class="toolbar-button" type="button" aria-pressed="true">White text</button>
     <button id="dragToggle" class="toolbar-button" type="button">Lock drag</button>
+    <button id="layoutExportToggle" class="toolbar-button" type="button" aria-pressed="false">Layout JSON</button>
     <button id="resetLayout" class="toolbar-button" type="button">Reset layout</button>
     <button id="hideControls" class="toolbar-button" type="button">Hide controls</button>
   </div>
 
   <button id="showControls" class="toolbar-button controls-reveal" type="button">Show controls</button>
+
+  <section id="layoutPanel" class="layout-panel" hidden aria-label="Layout export">
+    <div class="layout-panel-head">
+      <span class="layout-panel-title">Layout export</span>
+      <span id="layoutPanelNote" class="layout-panel-note">Copy defaults for development.</span>
+    </div>
+    <textarea id="layoutOutput" class="layout-output" readonly spellcheck="false"></textarea>
+    <div class="layout-panel-actions">
+      <button id="copyLayout" class="toolbar-button" type="button">Copy JSON</button>
+      <button id="closeLayout" class="toolbar-button" type="button">Close</button>
+    </div>
+  </section>
 
   <section id="titlePiece" class="piece piece--band piece--title" data-piece="title">
     <p class="piece-title">Live Provenance Overlay | https://WitnessKey.online</p>
@@ -467,9 +540,15 @@
     watermarkToggle: document.getElementById("watermarkToggle"),
     inkToggle: document.getElementById("inkToggle"),
     dragToggle: document.getElementById("dragToggle"),
+    layoutExportToggle: document.getElementById("layoutExportToggle"),
     resetLayout: document.getElementById("resetLayout"),
     hideControls: document.getElementById("hideControls"),
     showControls: document.getElementById("showControls"),
+    layoutPanel: document.getElementById("layoutPanel"),
+    layoutPanelNote: document.getElementById("layoutPanelNote"),
+    layoutOutput: document.getElementById("layoutOutput"),
+    copyLayout: document.getElementById("copyLayout"),
+    closeLayout: document.getElementById("closeLayout"),
     statusText: document.getElementById("statusText"),
     codeValue: document.getElementById("codeValue"),
     codeVerticalValue: document.getElementById("codeVerticalValue"),
@@ -502,7 +581,8 @@
     verifyUrl: null,
     timer: null,
     dragging: null,
-    positions: {}
+    positions: {},
+    layoutPanelOpen: false
   };
 
   function readJson(rawValue) {
@@ -533,6 +613,10 @@
     return "witnesskey.provenance.stage.layout." + (state.loopId || "global") + "." + state.mode;
   }
 
+  function getLayoutStorageKeyForMode(mode) {
+    return "witnesskey.provenance.stage.layout." + (state.loopId || "global") + "." + mode;
+  }
+
   function savePrefs() {
     localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify({
       mode: state.mode,
@@ -546,6 +630,7 @@
 
   function saveLayout() {
     localStorage.setItem(getLayoutStorageKey(), JSON.stringify(state.positions));
+    refreshLayoutExportIfOpen();
   }
 
   function formatTime(value) {
@@ -556,6 +641,61 @@
 
   function formatVerticalCode(value) {
     return String(value || "----").split("").join("\n");
+  }
+
+  function sanitizeLayoutPositions(layout) {
+    const result = {};
+    PIECE_IDS.forEach(function (pieceId) {
+      const position = layout && layout[pieceId];
+      if (position && typeof position.x === "number" && typeof position.y === "number") {
+        result[pieceId] = {
+          x: Math.round(position.x),
+          y: Math.round(position.y)
+        };
+      }
+    });
+    return result;
+  }
+
+  function buildLayoutExportPayload() {
+    const fullPositions = state.mode === "full"
+      ? sanitizeLayoutPositions(state.positions)
+      : sanitizeLayoutPositions(readJson(localStorage.getItem(getLayoutStorageKeyForMode("full"))));
+    const compactPositions = state.mode === "compact"
+      ? sanitizeLayoutPositions(state.positions)
+      : sanitizeLayoutPositions(readJson(localStorage.getItem(getLayoutStorageKeyForMode("compact"))));
+
+    return {
+      loop_id: state.loopId || null,
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      },
+      prefs: {
+        greenScreen: state.greenScreen,
+        watermark: state.watermark,
+        inkMode: state.inkMode,
+        dragLocked: state.dragLocked
+      },
+      layouts: {
+        full: fullPositions,
+        compact: compactPositions
+      }
+    };
+  }
+
+  function updateLayoutExport() {
+    els.layoutOutput.value = JSON.stringify(buildLayoutExportPayload(), null, 2);
+  }
+
+  function setLayoutPanelNote(message) {
+    els.layoutPanelNote.textContent = message;
+  }
+
+  function refreshLayoutExportIfOpen() {
+    if (state.layoutPanelOpen) {
+      updateLayoutExport();
+    }
   }
 
   function clamp(value, min, max) {
@@ -616,6 +756,32 @@
         : defaults[pieceId];
       applyPiecePosition(pieceId, nextPosition, false);
     });
+    refreshLayoutExportIfOpen();
+  }
+
+  function setLayoutPanelOpen(open) {
+    state.layoutPanelOpen = open;
+    els.layoutExportToggle.setAttribute("aria-pressed", String(open));
+    els.layoutPanel.hidden = !open;
+
+    if (open) {
+      updateLayoutExport();
+      setLayoutPanelNote("Copy defaults for development.");
+    }
+  }
+
+  async function copyLayoutExport() {
+    updateLayoutExport();
+    const text = els.layoutOutput.value;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setLayoutPanelNote("Layout JSON copied.");
+    } catch {
+      els.layoutOutput.focus();
+      els.layoutOutput.select();
+      setLayoutPanelNote("Clipboard blocked. Select and copy from the box.");
+    }
   }
 
   function syncBackLink() {
@@ -962,6 +1128,13 @@
   });
   els.dragToggle.addEventListener("click", function () {
     setDragLocked(!state.dragLocked);
+  });
+  els.layoutExportToggle.addEventListener("click", function () {
+    setLayoutPanelOpen(!state.layoutPanelOpen);
+  });
+  els.copyLayout.addEventListener("click", copyLayoutExport);
+  els.closeLayout.addEventListener("click", function () {
+    setLayoutPanelOpen(false);
   });
   els.resetLayout.addEventListener("click", resetLayout);
   els.hideControls.addEventListener("click", function () {
