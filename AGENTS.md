@@ -107,3 +107,22 @@ Before completing a task, confirm:
 ## Do not invent
 
 Do not invent new product concepts, new event types, new identity systems, or new persistence layers. Implement exactly v0.1 Private Authorization Witnessing. When unsure, choose the smallest implementation that preserves the invariant: private payload stays private.
+
+## Games / Public Surfaces
+
+If Games-layer or public-surface work is requested, use the compressed handoff pack at:
+
+```txt
+docs/games/20260625__LOOPTLOOP__GAMES__INSTRUCTION-PACK.zip
+```
+
+Compressed operating rules:
+
+- Keep private payloads private.
+- Treat `https://api.looptloop.online/v0` as the canonical API base.
+- Treat `looptloop.io` and `api.looptloop.io` as deprecated unless a new explicit directive says otherwise.
+- Treat aliases and subdomains as canonical only when they are documented in `wrangler.toml`, tests, and public docs.
+- For public static surfaces, keep `robots.txt`, `sitemap.xml`, `llms.txt`, and the license package aligned.
+- Prefer `LICENSE` + `IPOL.md`; use `MERGED_LICENSE.md` only when one file is the practical choice.
+- For Astro surfaces, keep changes layout-level and source-aware.
+- Do not add analytics, tracking, or hidden authority claims.

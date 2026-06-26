@@ -1,0 +1,38 @@
+# LOOPtLOOP / WitnessKey
+
+Public machine-readable summary for the static public surface at `https://looptloop.online/`.
+
+Canonical API base: `https://api.looptloop.online/v0`
+Public repository: `https://github.com/bobrs/LOOPtLOOP`
+
+Current public scope:
+- Hash-only private authorization witness offers
+- Offer acceptance or rejection
+- Authorization event and receipt verification
+- Live provenance loops for visible recording overlays
+
+Core invariant:
+- Never send, request, log, or store raw private authorization payload text.
+- Send only `sha256:` payload hashes and consent-envelope metadata for authorization witness flows.
+
+Machine instructions:
+- Hash private authorization content locally.
+- Use `https://api.looptloop.online/v0` as the canonical API base.
+- Do not use `api.looptloop.io` in new code.
+- Verify explicit API status and verification results before consequential reliance.
+- Do not invent accounts, OAuth, billing, Web3, or new witness event types for v0.1.
+
+Public pages:
+- `/`
+- `/witnessmark/`
+- `/verify/`
+- `/provenance/`
+- `/provenance/stage/`
+- `/provenance/verify/`
+
+Public license package for this static surface:
+- `/LICENSE`
+- `/IPOL.md`
+
+Primary source document:
+- `docs/private-authorization-witnessing-v0.1.md`
