@@ -26,6 +26,8 @@
     --hover-fill: rgba(255, 255, 255, 0.18);
     --frame-width-full: min(760px, calc(100vw - 64px));
     --frame-width-compact: min(520px, calc(100vw - 48px));
+    --title-width-full: min(988px, calc(100vw - 64px));
+    --title-width-compact: min(676px, calc(100vw - 48px));
     --countdown-width-full: 344px;
     --countdown-width-compact: 272px;
   }
@@ -190,9 +192,9 @@
   .piece-title {
     margin: 0;
     font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
-    font-size: clamp(0.82rem, 1.2vw, 0.98rem);
+    font-size: clamp(1rem, 1.45vw, 1.18rem);
     font-weight: 700;
-    line-height: 1.1;
+    line-height: 1.18;
     letter-spacing: 0.02em;
     white-space: nowrap;
   }
@@ -237,8 +239,8 @@
     font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
   }
   .piece--title {
-    width: var(--frame-width-full);
-    padding-block: 10px;
+    width: var(--title-width-full);
+    padding-block: 14px;
   }
   .piece--code {
     width: var(--frame-width-full);
@@ -305,7 +307,7 @@
     margin-bottom: 4px;
   }
   .compact-mode .piece-title {
-    font-size: clamp(0.7rem, 1.25vw, 0.84rem);
+    font-size: clamp(0.86rem, 1.35vw, 1rem);
   }
   .compact-mode .code-value {
     font-size: clamp(2.6rem, 6vw, 4.8rem);
@@ -318,8 +320,8 @@
     font-size: clamp(0.86rem, 1.6vw, 1rem);
   }
   .compact-mode .piece--title {
-    width: var(--frame-width-compact);
-    padding-block: 8px;
+    width: var(--title-width-compact);
+    padding-block: 10px;
   }
   .compact-mode .piece--code {
     width: var(--frame-width-compact);
@@ -378,7 +380,7 @@
   <button id="showControls" class="toolbar-button controls-reveal" type="button">Show controls</button>
 
   <section id="titlePiece" class="piece piece--band piece--title" data-piece="title">
-    <p class="piece-title">Live Provenance Overlay | https://WitnessKey.online/provenance</p>
+    <p class="piece-title">Live Provenance Overlay | https://WitnessKey.online</p>
     <span id="statusText" class="sr-only" aria-live="polite">Waiting for loop state.</span>
   </section>
 
