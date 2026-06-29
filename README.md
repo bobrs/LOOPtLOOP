@@ -51,6 +51,26 @@ npm test
 npm run dev:local
 ```
 
+## Repository split
+
+The LOOPtLOOP repository now hosts the Worker API, D1 schema, tests, and the
+minimal `looptloop.online` public surface.
+
+The human-facing WitnessKey / WitnessMark / Provenance frontend now lives in a
+peer repository checked out beside this one:
+
+```txt
+../witnessmark
+```
+
+The canonical frontend routes are now:
+
+- `https://witnesskey.online/witnessmark/`
+- `https://witnesskey.online/witnessmark/verify/`
+- `https://witnesskey.online/provenance/`
+- `https://witnesskey.online/provenance/stage/`
+- `https://witnesskey.online/provenance/verify/`
+
 ## Recent prototype updates
 
 ### June 24, 2026
@@ -59,6 +79,11 @@ npm run dev:local
 - Kept `/provenance/` as the setup page and added direct stage launch and popup launch controls.
 - Added full and compact overlay modes, green screen mode, watermark mode, drag positioning, and saved stage UI preferences.
 - Preserved the private authorization witness invariant: no private authorization payload text is requested, transmitted, stored, or logged by the provenance stage UI.
+
+### June 29, 2026
+
+- Moved the WitnessKey / WitnessMark / Provenance static frontend out of this repo and into the peer `../witnessmark` repository for separate hosting under `witnesskey.online`.
+- Kept LOOPtLOOP as the canonical API and receipt/provenance backend at `https://api.looptloop.online/v0`.
 
 ## Cloudflare resources
 
@@ -186,10 +211,11 @@ npm run d1:migrate:local
 npm run dev:local
 ```
 
-2. Serve the static `public` directory from an allowed local origin:
+2. Serve the sibling `witnessmark` repository from an allowed local origin.
+   This assumes it is checked out beside this repo at `../witnessmark`:
 
 ```bash
-python3 -m http.server 5173 -d public
+python3 -m http.server 5173 -d ../witnessmark
 ```
 
 3. Open the live overlay page with the local API override:
@@ -261,43 +287,52 @@ npm run d1:migrate:local
 npm run dev:local
 ```
 
-2. Open [public/witnessmark/index.html](</Users/bob/Library/CloudStorage/GoogleDrive-bob@simpsoncentral.com/Shared drives/DeepTrust Labs/Github/LOOPtLOOP/public/witnessmark/index.html>) in a browser.
+2. Serve the sibling `witnessmark` repository if it is not already being served:
 
-3. Select `External WitnessKey authorization loop`.
+```bash
+python3 -m http.server 5173 -d ../witnessmark
+```
 
-4. Enter a private input and confirm the consent checkboxes.
+3. Open the WitnessMark page in a browser:
 
-5. Create the mark and confirm:
+```txt
+http://localhost:5173/witnessmark/?api_base=http://127.0.0.1:8787/v0
+```
+4. Select `External WitnessKey authorization loop`.
+
+5. Enter a private input and confirm the consent checkboxes.
+
+6. Create the mark and confirm:
    - the page shows `Pending Abracadoo acceptance`
    - the receipt text includes the local `sha256:` fingerprint
    - the raw private input remains only in the page receipt and is not sent to the API
    - the acceptance handoff URL is shown
 
-6. Click `Developer accept via API` and confirm:
+7. Click `Developer accept via API` and confirm:
    - the page shows `Accepted. Authorization event and receipt are ready.`
    - the receipt renders returned event and receipt JSON
    - copy, download, and print still work
 
-7. Repeat with `Developer reject via API` and confirm:
+8. Repeat with `Developer reject via API` and confirm:
    - the page shows `Rejected. No authorization event was created.`
 
-8. Repeat with `Refresh external status` and confirm:
+9. Repeat with `Refresh external status` and confirm:
    - `pending`, `accepted`, `rejected`, `expired`, and API/network error states render visible status copy
 
 ## Verification page manual validation
 
 There is no automated browser harness in this repo for the human-facing verification page. Validate it manually:
 
-1. Start a static file server from the repo root:
+1. Serve the sibling `witnessmark` repository from an allowed local origin:
 
 ```bash
-python3 -m http.server 8000
+python3 -m http.server 5173 -d ../witnessmark
 ```
 
 2. Open the static page with a known event ID:
 
 ```txt
-http://127.0.0.1:8000/public/verify/index.html?event_id=we_TEST_VALID_EVENT_ID
+http://localhost:5173/witnessmark/verify/?event_id=we_TEST_VALID_EVENT_ID&api_base=http://127.0.0.1:8787/v0
 ```
 
 3. Confirm the page calls:
@@ -329,7 +364,7 @@ https://api.looptloop.online/v0/authorization-events/we_TEST_VALID_EVENT_ID/veri
 6. If the page is deployed behind a route rewrite, also confirm path extraction works:
 
 ```txt
-/verify/we_TEST_VALID_EVENT_ID
+/witnessmark/verify/we_TEST_VALID_EVENT_ID
 ```
 
 7. Confirm the page never asks for, uploads, or stores private payload content.

@@ -348,7 +348,7 @@ export function makeEnv(): TestEnv {
   return {
     DB: database as unknown as D1Database,
     API_BASE_URL: API_BASE,
-    WITNESSKEY_VERIFY_BASE_URL: "https://witnesskey.online/verify",
+    WITNESSKEY_VERIFY_BASE_URL: "https://witnesskey.online/witnessmark/verify",
     ABRACADOO_ACCEPT_WITNESS_BASE_URL: "https://app.abracadoo.app/accept-witness/",
     PROVENANCE_VERIFY_BASE_URL: "https://witnesskey.online/provenance/verify/",
     ALLOWED_ORIGINS: "https://app.abracadoo.app,https://abracadoo.app,https://witnesskey.online,http://localhost:8787,http://localhost:5173",

@@ -21,7 +21,7 @@ import { json, jsonError } from "./utils/json";
 import { isHttpsOrLocalUrl, isSha256Hash, isStringArray } from "./utils/validation";
 
 const CANONICAL_API_BASE_URL = "https://api.looptloop.online/v0";
-const DEFAULT_VERIFY_BASE_URL = "https://witnesskey.online/verify";
+const DEFAULT_VERIFY_BASE_URL = "https://witnesskey.online/witnessmark/verify";
 const DEFAULT_ABRACADOO_ACCEPT_WITNESS_BASE_URL = "https://app.abracadoo.app/accept-witness/";
 const EVENT_TYPE = "private_authorization_witnessed";
 const OFFER_SCHEMA = "WITNESSKEY_AUTHORIZATION_OFFER_0_1";

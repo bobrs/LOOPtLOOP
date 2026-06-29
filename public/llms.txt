@@ -22,13 +22,15 @@ Machine instructions:
 - Verify explicit API status and verification results before consequential reliance.
 - Do not invent accounts, OAuth, billing, Web3, or new witness event types for v0.1.
 
-Public pages:
+Public pages on `looptloop.online`:
 - `/`
-- `/witnessmark/`
-- `/verify/`
-- `/provenance/`
-- `/provenance/stage/`
-- `/provenance/verify/`
+
+Related human-facing surfaces now hosted separately on `witnesskey.online`:
+- `https://witnesskey.online/witnessmark/`
+- `https://witnesskey.online/witnessmark/verify/`
+- `https://witnesskey.online/provenance/`
+- `https://witnesskey.online/provenance/stage/`
+- `https://witnesskey.online/provenance/verify/`
 
 Public license package for this static surface:
 - `/LICENSE`

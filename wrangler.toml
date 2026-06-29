@@ -16,7 +16,7 @@ database_id = "b9ad8908-0ec1-40bd-bf66-229d5fb9884d"
 
 [vars]
 API_BASE_URL = "https://api.looptloop.online/v0"
-WITNESSKEY_VERIFY_BASE_URL = "https://witnesskey.online/verify"
+WITNESSKEY_VERIFY_BASE_URL = "https://witnesskey.online/witnessmark/verify"
 ABRACADOO_ACCEPT_WITNESS_BASE_URL = "https://app.abracadoo.app/accept-witness/"
 ALLOWED_ORIGINS = "https://app.abracadoo.app,https://abracadoo.app,https://witnesskey.online,http://localhost:8787,http://localhost:5173"
 PROVENANCE_VERIFY_BASE_URL = "https://witnesskey.online/provenance/verify/"
